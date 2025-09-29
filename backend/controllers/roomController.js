@@ -1,0 +1,171 @@
+const Room = require('../models/Room');
+const path = require('path');
+const fs = require('fs');
+
+// Helper to build public URL for uploaded files
+const toPublicPath = (req, filepath) => {
+  // Serve under /uploads
+  const rel = filepath.split(path.sep).slice(-3).join('/'); // uploads/rooms/<file>
+  return `${req.protocol}://${req.get('host')}/${rel.replace(/^\\+/, '')}`;
+};
+
+// GET /api/rooms?type=&status=&minPrice=&maxPrice=
+exports.getRooms = async (req, res) => {
+  try {
+    const { type, status, minPrice, maxPrice } = req.query;
+    const filter = {};
+    if (type) filter.type = type;
+    if (status) filter.status = status;
+    if (minPrice || maxPrice) {
+      filter.price = {};
+      if (minPrice) filter.price.$gte = Number(minPrice);
+      if (maxPrice) filter.price.$lte = Number(maxPrice);
+    }
+  const rooms = await Room.find(filter).sort({ price: 1, roomNumber: 1 });
+  // Wrap with currency metadata (non-breaking for existing clients expecting array? Provide fallback compatibility if caller treats response as array)
+  // If client expects array, adjust frontend accordingly.
+  res.json({ currency: 'LKR', symbol: 'Rs.', items: rooms });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// GET /api/rooms/:id
+exports.getRoomById = async (req, res) => {
+  try {
+    const room = await Room.findById(req.params.id);
+  if (!room) return res.status(404).json({ message: 'Room not found' });
+  res.json({ currency: 'LKR', symbol: 'Rs.', item: room });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// POST /api/rooms (Admin/Staff) multipart/form-data with photos
+exports.createRoom = async (req, res) => {
+  try {
+    const body = { ...req.body };
+    // Normalize types
+    if (typeof body.amenities === 'string') {
+      // Allow CSV or single value; also support JSON array string
+      try {
+        const parsed = JSON.parse(body.amenities);
+        body.amenities = Array.isArray(parsed) ? parsed : [String(parsed)];
+      } catch {
+        body.amenities = body.amenities
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean);
+      }
+    }
+    if (body.price) body.price = Number(body.price);
+    if (body.capacity) body.capacity = Number(body.capacity);
+
+    // Enforce a maximum of 50 rooms total
+    const MAX_ROOMS = 50;
+    const total = await Room.countDocuments();
+    if (total >= MAX_ROOMS) {
+      // Clean up any uploaded files from this request, if any
+      if (Array.isArray(req.files) && req.files.length) {
+        await Promise.all(
+          req.files.map((f) => fs.promises.unlink(f.path).catch(() => {}))
+        );
+      }
+      return res.status(400).json({ message: `Room limit reached (${MAX_ROOMS}). Delete a room before adding a new one.` });
+    }
+
+    const photos = (req.files || []).map((f) => toPublicPath(req, f.path));
+    // Require at least one photo when creating a room
+    if (!photos || photos.length === 0) {
+      return res.status(400).json({ message: 'At least one photo is required' });
+    }
+    const room = await Room.create({ ...body, photos });
+  res.status(201).json({ currency: 'LKR', symbol: 'Rs.', item: room });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// PUT /api/rooms/:id (Admin/Staff) multipart/form-data allowed
+exports.updateRoom = async (req, res) => {
+  try {
+    const room = await Room.findById(req.params.id);
+    if (!room) return res.status(404).json({ message: 'Room not found' });
+
+    const body = { ...req.body };
+    if (typeof body.amenities === 'string') {
+      try {
+        const parsed = JSON.parse(body.amenities);
+        body.amenities = Array.isArray(parsed) ? parsed : [String(parsed)];
+      } catch {
+        body.amenities = body.amenities
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean);
+      }
+    }
+    if (body.price) body.price = Number(body.price);
+    if (body.capacity) body.capacity = Number(body.capacity);
+
+    // Handle removal of existing photos if requested
+    let removePhotos = [];
+    console.log('Raw removePhotos from body:', body.removePhotos);
+    if (typeof body.removePhotos === 'string') {
+      try {
+        const parsed = JSON.parse(body.removePhotos);
+        removePhotos = Array.isArray(parsed) ? parsed : [];
+        console.log('Parsed removePhotos:', removePhotos);
+      } catch {
+        // Fallback: comma-separated
+        removePhotos = body.removePhotos.split(',').map((s) => s.trim()).filter(Boolean);
+        console.log('Fallback parsed removePhotos:', removePhotos);
+      }
+    } else if (Array.isArray(body.removePhotos)) {
+      removePhotos = body.removePhotos;
+      console.log('Array removePhotos:', removePhotos);
+    }
+
+    const existingAll = Array.isArray(room.photos) ? room.photos : [];
+    console.log('Existing photos:', existingAll);
+    const existingAfterRemoval = existingAll.filter((p) => !removePhotos.includes(p));
+    console.log('Photos after removal:', existingAfterRemoval);
+
+    // New uploaded photos
+    const newPhotos = (req.files || []).map((f) => toPublicPath(req, f.path));
+
+  // Merge existing (post-removal) with new, enforce max 5 and uniqueness
+    const set = new Set();
+    const merged = [];
+    for (const p of existingAfterRemoval) {
+      if (!set.has(p)) { set.add(p); merged.push(p); }
+    }
+    for (const p of newPhotos) {
+      if (merged.length >= 5) break;
+      if (!set.has(p)) { set.add(p); merged.push(p); }
+    }
+    body.photos = merged;
+
+    // Require at least one photo to remain after update
+    if (!Array.isArray(body.photos) || body.photos.length === 0) {
+      return res.status(400).json({ message: 'At least one photo is required' });
+    }
+
+    Object.assign(room, body);
+    await room.save();
+  res.json({ currency: 'LKR', symbol: 'Rs.', item: room });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// DELETE /api/rooms/:id (Admin)
+exports.deleteRoom = async (req, res) => {
+  try {
+    const room = await Room.findById(req.params.id);
+    if (!room) return res.status(404).json({ message: 'Room not found' });
+    await room.deleteOne();
+    res.json({ message: 'Room deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};

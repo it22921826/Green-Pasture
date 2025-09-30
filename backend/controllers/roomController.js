@@ -1,6 +1,11 @@
 import Room from '../models/Room.js';
 import path from 'path';
 import fs from 'fs';
+import { fileURLToPath } from 'url';
+
+// Recreate __dirname for ESM modules (was missing previously and broke file path resolution when photos existed)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Robust helper to build a public URL for uploaded files relative to uploads root
 const toPublicPath = (req, filepath) => {
@@ -58,8 +63,9 @@ export const getRoomById = async (req, res) => {
 export const createRoom = async (req, res) => {
   try {
     const body = { ...req.body };
+    console.log('[createRoom] content-type:', req.headers['content-type']);
     console.log('[createRoom] body keys:', Object.keys(body));
-    console.log('[createRoom] files count:', (req.files || []).length);
+    console.log('[createRoom] raw files meta:', (req.files || []).map(f => ({ field: f.fieldname, name: f.originalname, mime: f.mimetype, size: f.size })));
     // Normalize types
     if (typeof body.amenities === 'string') {
       // Allow CSV or single value; also support JSON array string
@@ -89,7 +95,21 @@ export const createRoom = async (req, res) => {
       return res.status(400).json({ message: `Room limit reached (${MAX_ROOMS}). Delete a room before adding a new one.` });
     }
 
-  const photos = (req.files || []).map((f) => toPublicPath(req, f.path)).filter(Boolean);
+  const photos = (req.files || []).map((f) => {
+    try {
+      // New: prefer in-memory buffer -> base64 data URI for DB storage
+      if (f.buffer) {
+        const base64 = f.buffer.toString('base64');
+        return `data:${f.mimetype};base64,${base64}`;
+      }
+      // Fallback (legacy disk-based path)
+      if (f.path) return toPublicPath(req, f.path);
+      return '';
+    } catch (e) {
+      console.warn('[createRoom] photo transform error for', f.originalname, e.message);
+      return '';
+    }
+  }).filter(Boolean);
     // Require at least one photo when creating a room
     if (!photos || photos.length === 0) {
       return res.status(400).json({ message: 'At least one photo is required' });
@@ -155,7 +175,19 @@ export const updateRoom = async (req, res) => {
     console.log('Photos after removal:', existingAfterRemoval);
 
     // New uploaded photos
-  const newPhotos = (req.files || []).map((f) => toPublicPath(req, f.path)).filter(Boolean);
+  const newPhotos = (req.files || []).map((f) => {
+    try {
+      if (f.buffer) {
+        const base64 = f.buffer.toString('base64');
+        return `data:${f.mimetype};base64,${base64}`;
+      }
+      if (f.path) return toPublicPath(req, f.path);
+      return '';
+    } catch (e) {
+      console.warn('[updateRoom] photo transform error for', f.originalname, e.message);
+      return '';
+    }
+  }).filter(Boolean);
 
   // Merge existing (post-removal) with new, enforce max 5 and uniqueness
     const set = new Set();

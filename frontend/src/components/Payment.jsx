@@ -43,7 +43,8 @@ const GuestPayment = () => {
   }, [navState.amount, navState.roomNumber]);
 
   const handleFileChange = (e) => {
-    setForm({ ...form, paymentProof: e.target.files[0] });
+    const file = e.target.files[0];
+    setForm({ ...form, paymentProof: file });
   };
 
   const handleChange = (e) => {
@@ -63,7 +64,19 @@ const GuestPayment = () => {
 
     try {
       const res = await axios.post("/payments/manual", data);
+      const stored = res.data?.data?.paymentProof;
       setMessage(res.data?.message || "Payment proof uploaded successfully ✅");
+      if (stored) {
+        // Optionally show a quick preview if it's a data URI (image)
+        try {
+          if (stored.startsWith('data:image')) {
+            // Create an img preview element below
+            setPreview(stored);
+          } else if (res.data?.fileUrl) {
+            setPreview(res.data.fileUrl);
+          }
+        } catch {}
+      }
       // Optional: reset form except read-only fields
       setForm(f => ({ ...f, paymentProof: null }));
     } catch (err) {
@@ -74,6 +87,8 @@ const GuestPayment = () => {
       setSubmitting(false);
     }
   };
+
+  const [preview, setPreview] = useState(null);
 
   return (
     <div className="p-6 max-w-md mx-auto bg-white shadow rounded">
@@ -129,6 +144,20 @@ const GuestPayment = () => {
             required
           />
         </label>
+        {form.paymentProof && form.paymentProof.type?.startsWith('image') && (
+          <div className="text-sm text-gray-600">
+            Preview: <img alt="preview" className="mt-2 max-h-40 rounded border" src={URL.createObjectURL(form.paymentProof)} />
+          </div>
+        )}
+        {preview && (
+          <div className="text-sm text-green-700">
+            Stored Preview: {preview.startsWith('data:image') ? (
+              <img alt="stored" className="mt-2 max-h-40 rounded border" src={preview} />
+            ) : (
+              <a className="underline" href={preview} target="_blank" rel="noreferrer">View uploaded file</a>
+            )}
+          </div>
+        )}
 
         <button type="submit" disabled={submitting} className={`bg-blue-500 text-white p-2 rounded ${submitting ? 'opacity-70 cursor-not-allowed' : ''}`}>
           {submitting ? 'Submitting...' : 'Submit Payment'}

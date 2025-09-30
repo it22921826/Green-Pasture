@@ -14,6 +14,17 @@ export const submitManualPayment = async (req, res) => {
       return res.status(400).json({ success: false, message: "No file uploaded" });
     }
 
+    // Convert uploaded file (memoryStorage) to base64 data URI for DB embedding
+    let paymentProofDataUri = '';
+    try {
+      if (req.file.buffer) {
+        const base64 = req.file.buffer.toString('base64');
+        paymentProofDataUri = `data:${req.file.mimetype};base64,${base64}`;
+      }
+    } catch (e) {
+      console.warn('[payment] failed to encode file, will fallback to filename reference', e.message);
+    }
+
     // 1. Create a new invoice (simple incremental number)
     const last = await Invoice.findOne().sort({ createdAt: -1 });
     const nextNum = (() => {
@@ -27,7 +38,7 @@ export const submitManualPayment = async (req, res) => {
       customerName,
       amount,
       email,
-      paymentProof: req.file.filename,
+      paymentProof: paymentProofDataUri || req.file.filename,
       status: "pending",
       method: "manual_upload",
     });
@@ -74,7 +85,8 @@ export const submitManualPayment = async (req, res) => {
       message: "Payment submitted successfully",
       data: payment,
       invoice,
-      fileUrl: `/uploads/${req.file.filename}`,
+      // If base64 stored, we still include fileUrl for backward compatibility (may not exist on disk now)
+      fileUrl: paymentProofDataUri ? undefined : `/uploads/${req.file.filename}`,
     });
   } catch (err) {
     console.error(err);

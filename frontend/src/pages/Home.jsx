@@ -7,13 +7,7 @@ import H2 from "../assets/H2.jpg";
 import H3 from "../assets/H3.jpg";
 import H4 from "../assets/H4.jpg";
 
-const features = [
-  {
-    title: "Easy Booking",
-    desc: "Book rooms quickly and securely with just a few clicks.",
-    icon: "🛏️",
-  },
-];
+// Feature section removed as per request (previously contained "Easy Booking")
 
 const testimonials = [
   {
@@ -98,18 +92,7 @@ const Home = () => {
         </div>
       </div>
 
-      {/* Feature Highlights */}
-  <div className="relative mx-auto mt-14 flex max-w-5xl flex-wrap justify-center gap-9">
-        {features.map((f, i) => (
-          <Link key={i} to="/book" className="block">
-            <div className="flex min-w-[240px] cursor-pointer flex-col items-center rounded-2xl border border-blue-100 bg-white/90 p-8 text-center shadow-xl transition-transform duration-300 hover:-translate-y-1">
-              <div className="mb-3 text-5xl">{f.icon}</div>
-              <div className="mb-2 text-xl font-bold text-[#000B58]">{f.title}</div>
-              <div className="text-[17px] text-neutral-600">{f.desc}</div>
-            </div>
-          </Link>
-        ))}
-      </div>
+      {/* Feature Highlights removed */}
 
       {/* Testimonials */}
   <div className="relative mx-auto mt-16 max-w-3xl rounded-2xl border border-white/30 bg-white/75 p-9 shadow-xl backdrop-blur-xl">

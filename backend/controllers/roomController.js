@@ -2,11 +2,24 @@ const Room = require('../models/Room');
 const path = require('path');
 const fs = require('fs');
 
-// Helper to build public URL for uploaded files
+// Robust helper to build a public URL for uploaded files relative to uploads root
 const toPublicPath = (req, filepath) => {
-  // Serve under /uploads
-  const rel = filepath.split(path.sep).slice(-3).join('/'); // uploads/rooms/<file>
-  return `${req.protocol}://${req.get('host')}/${rel.replace(/^\\+/, '')}`;
+  try {
+    const uploadsRoot = path.join(__dirname, '..', 'uploads');
+    let rel = path.relative(uploadsRoot, filepath); // e.g. rooms/filename.ext
+    rel = rel.split(path.sep).join('/');
+    if (!rel || rel.startsWith('..')) {
+      // Fallback if relative fails
+      const parts = filepath.split(path.sep);
+      const last = parts.slice(-2).join('/');
+      rel = last.includes('rooms/') ? last : `rooms/${last}`;
+    }
+    if (!rel.startsWith('rooms/')) rel = `rooms/${rel}`;
+    return `${req.protocol}://${req.get('host')}/uploads/${rel}`;
+  } catch (e) {
+    console.warn('[toPublicPath] failed for', filepath, e.message);
+    return '';
+  }
 };
 
 // GET /api/rooms?type=&status=&minPrice=&maxPrice=
@@ -45,6 +58,8 @@ exports.getRoomById = async (req, res) => {
 exports.createRoom = async (req, res) => {
   try {
     const body = { ...req.body };
+    console.log('[createRoom] body keys:', Object.keys(body));
+    console.log('[createRoom] files count:', (req.files || []).length);
     // Normalize types
     if (typeof body.amenities === 'string') {
       // Allow CSV or single value; also support JSON array string
@@ -74,13 +89,22 @@ exports.createRoom = async (req, res) => {
       return res.status(400).json({ message: `Room limit reached (${MAX_ROOMS}). Delete a room before adding a new one.` });
     }
 
-    const photos = (req.files || []).map((f) => toPublicPath(req, f.path));
+  const photos = (req.files || []).map((f) => toPublicPath(req, f.path)).filter(Boolean);
     // Require at least one photo when creating a room
     if (!photos || photos.length === 0) {
       return res.status(400).json({ message: 'At least one photo is required' });
     }
-    const room = await Room.create({ ...body, photos });
-  res.status(201).json({ currency: 'LKR', symbol: 'Rs.', item: room });
+    let room = new Room({ ...body, photos });
+    await room.save();
+    let persisted = await Room.findById(room._id).lean();
+    if (!persisted || !Array.isArray(persisted.photos) || persisted.photos.length === 0) {
+      console.warn('[createRoom] photos missing after save, retrying assignment');
+      room.photos = photos;
+      await room.save();
+      persisted = await Room.findById(room._id).lean();
+    }
+    console.log('[createRoom] saved room', room._id.toString(), 'photos:', (persisted.photos || []).length);
+    res.status(201).json({ currency: 'LKR', symbol: 'Rs.', item: persisted });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -131,7 +155,7 @@ exports.updateRoom = async (req, res) => {
     console.log('Photos after removal:', existingAfterRemoval);
 
     // New uploaded photos
-    const newPhotos = (req.files || []).map((f) => toPublicPath(req, f.path));
+  const newPhotos = (req.files || []).map((f) => toPublicPath(req, f.path)).filter(Boolean);
 
   // Merge existing (post-removal) with new, enforce max 5 and uniqueness
     const set = new Set();
@@ -152,7 +176,15 @@ exports.updateRoom = async (req, res) => {
 
     Object.assign(room, body);
     await room.save();
-  res.json({ currency: 'LKR', symbol: 'Rs.', item: room });
+    let persisted = await Room.findById(room._id).lean();
+    if ((!persisted.photos || persisted.photos.length === 0) && merged.length > 0) {
+      console.warn('[updateRoom] photos missing after save, restoring merged');
+      room.photos = merged;
+      await room.save();
+      persisted = await Room.findById(room._id).lean();
+    }
+    console.log('[updateRoom] room', room._id.toString(), 'photos:', (persisted.photos || []).length);
+    res.json({ currency: 'LKR', symbol: 'Rs.', item: persisted });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

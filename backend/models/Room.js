@@ -7,7 +7,14 @@ const roomSchema = new mongoose.Schema(
     price: { type: Number, required: true, min: 0 },
     amenities: [{ type: String }],
     status: { type: String, enum: ['Available', 'Booked', 'Maintenance'], default: 'Available' },
-    photos: [{ type: String }], // store URL/path strings
+    photos: {
+      type: [String],
+      validate: {
+        validator: function(arr) { return Array.isArray(arr) && arr.length > 0; },
+        message: 'At least one photo URL must be stored for a room.'
+      },
+      required: true,
+    }, // store URL/path strings
     description: { type: String },
     capacity: { type: Number, default: 2, min: 1 },
   },

@@ -1,10 +1,23 @@
 const Booking = require('../models/Booking');
+const Room = require('../models/Room');
 
-// Create booking
+// Create booking (also updates Room status to 'Booked')
 exports.createBooking = async (req, res) => {
   try {
-    const { roomNumber, checkIn, checkOut, specialRequests, paymentConfirmation } = req.body;
-    const status = paymentConfirmation ? 'Booked' : 'PendingPayment';
+    let { roomNumber, checkIn, checkOut, specialRequests, paymentConfirmation } = req.body;
+    if (typeof roomNumber === 'string') roomNumber = roomNumber.trim();
+
+    const room = await Room.findOne({ roomNumber });
+    if (!room) {
+      console.warn('[createBooking] Room not found for number:', roomNumber);
+      return res.status(404).json({ message: 'Room not found' });
+    }
+    if (room.status === 'Booked') {
+      console.warn('[createBooking] Attempt to book already booked room:', roomNumber);
+      return res.status(400).json({ message: 'Room already booked' });
+    }
+
+    // Force status Booked for immediate reflection
     const booking = await Booking.create({
       guest: req.user._id,
       roomNumber,
@@ -12,10 +25,17 @@ exports.createBooking = async (req, res) => {
       checkOut,
       specialRequests,
       paymentConfirmation: paymentConfirmation || undefined,
-      status,
+      status: 'Booked'
     });
-    res.status(201).json(booking);
+
+    // Update room status prior to responding
+    room.status = 'Booked';
+    await room.save();
+    const freshRoom = await Room.findById(room._id); // ensure we send latest persisted doc
+    console.log('[createBooking] Booking created and room marked booked:', { bookingId: booking._id, roomNumber });
+    res.status(201).json({ booking, updatedRoom: freshRoom });
   } catch (error) {
+    console.error('[createBooking] Error:', error);
     res.status(500).json({ message: error.message });
   }
 };

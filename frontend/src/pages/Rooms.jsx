@@ -56,6 +56,23 @@ const Rooms = () => {
 
   const closeForm = () => setSelectedRoom(null);
 
+  // Optimistic update when booking succeeds
+  const handleBookingSuccess = (booking, updatedRoom) => {
+    const bookedNumber = (booking && booking.roomNumber ? String(booking.roomNumber) : '').trim();
+    console.log('[BookingSuccess] booking:', booking);
+    console.log('[BookingSuccess] updatedRoom:', updatedRoom);
+    const updateFn = (r => {
+      const rn = (r.roomNumber || '').trim();
+      if (updatedRoom && updatedRoom._id && r._id === updatedRoom._id) return { ...r, status: updatedRoom.status };
+      if (bookedNumber && rn === bookedNumber) return { ...r, status: 'Booked' };
+      return r;
+    });
+    setRooms(prev => prev.map(updateFn));
+    closeForm();
+    // Always refetch quickly to sync and override any stale copy
+    setTimeout(() => { fetchRooms(); }, 400);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -140,7 +157,7 @@ const Rooms = () => {
             <div className="relative w-full max-w-lg">
               <button onClick={closeForm} className="absolute -top-2 -right-2 z-10 rounded-full bg-white px-3 py-1 text-sm shadow">Close</button>
               <div className="rounded-xl bg-white shadow-2xl">
-                <BookingForm roomNumber={selectedRoom.roomNumber} onSuccess={closeForm} />
+                <BookingForm roomNumber={selectedRoom.roomNumber} roomPrice={selectedRoom.price} onSuccess={handleBookingSuccess} />
               </div>
             </div>
           </div>

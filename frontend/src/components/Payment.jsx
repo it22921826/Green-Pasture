@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation } from 'react-router-dom';
+import { getRooms } from '../api/roomApi';
 import axios from "axios";
 import { formatCurrency, CURRENCY_SYMBOL } from "../utils/currency";
 
@@ -24,8 +25,22 @@ const GuestPayment = () => {
   useEffect(() => {
     if (navState.amount && !form.amount) {
       setForm(f => ({ ...f, amount: navState.amount }));
+    } else if (!navState.amount && navState.roomNumber) {
+      // Fallback: try fetch room list and find price (lightweight reuse)
+      (async () => {
+        try {
+          const all = await getRooms({});
+          const found = all.find(r => String(r.roomNumber) === String(navState.roomNumber));
+          if (found && !form.amount) {
+            // Assume at least 1 night until real total known
+            setForm(f => ({ ...f, amount: found.price }));
+          }
+        } catch (e) {
+          console.warn('[Payment] fallback price fetch failed', e.message);
+        }
+      })();
     }
-  }, [navState.amount]);
+  }, [navState.amount, navState.roomNumber]);
 
   const handleFileChange = (e) => {
     setForm({ ...form, paymentProof: e.target.files[0] });

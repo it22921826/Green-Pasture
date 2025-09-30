@@ -2,8 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createBooking } from '../api/bookingApi';
 
-const BookingForm = ({ roomNumber: presetRoomNumber = '', onSuccess }) => {
-  const [form, setForm] = useState({ roomNumber: presetRoomNumber || '', checkIn: '', checkOut: '', specialRequests: '', paymentConfirmation: '' });
+const BookingForm = ({ roomNumber: presetRoomNumber = '', roomPrice = null, onSuccess }) => {
+  const [form, setForm] = useState({ roomNumber: presetRoomNumber || '', checkIn: '', checkOut: '', specialRequests: '' });
+  const [price] = useState(roomPrice); // snapshot provided
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
@@ -19,6 +20,9 @@ const BookingForm = ({ roomNumber: presetRoomNumber = '', onSuccess }) => {
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
+
+  const nights = form.checkIn && form.checkOut ? Math.max(0, (new Date(form.checkOut) - new Date(form.checkIn)) / (1000*60*60*24)) : 0;
+  const computedAmount = price && nights > 0 ? price * nights : 0;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -37,24 +41,23 @@ const BookingForm = ({ roomNumber: presetRoomNumber = '', onSuccess }) => {
       return;
     }
     try {
-      const res = await createBooking(form, token);
-      const booking = res?.data || res; // axios response vs direct
+  const res = await createBooking(form, token);
+  const payload = res?.data || res; // Expect { booking, updatedRoom }
+  const booking = payload.booking || payload; // fallback if older shape
       setSuccess('Booking created successfully! Redirecting to payment...');
-      if (onSuccess) onSuccess(booking);
-      // Derive a simple amount placeholder (could be enhanced to calculate from room & dates)
-      const stayNights = (new Date(form.checkOut) - new Date(form.checkIn)) / (1000 * 60 * 60 * 24);
-      const estimatedAmount = stayNights > 0 ? stayNights * 5000 : 0; // Placeholder rate
+  if (onSuccess) onSuccess(booking, payload.updatedRoom);
+      // Use computedAmount if available
       setTimeout(() => {
         navigate('/payment', {
           state: {
             roomNumber: booking.roomNumber,
             bookingId: booking._id,
-            amount: estimatedAmount,
+            amount: computedAmount,
             source: 'room-booking'
           }
         });
       }, 600);
-      setForm({ roomNumber: presetRoomNumber || '', checkIn: '', checkOut: '', specialRequests: '', paymentConfirmation: '' });
+  setForm({ roomNumber: presetRoomNumber || '', checkIn: '', checkOut: '', specialRequests: '' });
     } catch (err) {
       setError('Booking failed');
     } finally {
@@ -85,6 +88,8 @@ const BookingForm = ({ roomNumber: presetRoomNumber = '', onSuccess }) => {
               readOnly={!!presetRoomNumber}
               className={`w-full rounded-md border border-neutral-300 px-3 py-2 text-[15px] outline-none transition focus:border-blue-500 ${presetRoomNumber ? 'bg-neutral-100 cursor-not-allowed' : ''}`}
             />
+            {price != null && (
+              <p className="mt-1 text-xs text-green-700">Nightly Rate: Rs. {price.toLocaleString()}</p>) }
           </div>
           <div className="mb-5">
             <label htmlFor="checkIn" className="mb-1 block font-medium">Check-In Date</label>
@@ -121,20 +126,19 @@ const BookingForm = ({ roomNumber: presetRoomNumber = '', onSuccess }) => {
               className="w-full rounded-md border border-neutral-300 px-3 py-2 text-[15px] outline-none transition focus:border-blue-500"
             />
           </div>
-          <div className="mb-5">
-            <label htmlFor="paymentConfirmation" className="mb-1 block font-medium">Payment Confirmation</label>
-            <input
-              name="paymentConfirmation"
-              id="paymentConfirmation"
-              placeholder="Payment Confirmation"
-              value={form.paymentConfirmation}
-              onChange={handleChange}
-              className="w-full rounded-md border border-neutral-300 px-3 py-2 text-[15px] outline-none transition focus:border-blue-500"
-            />
-          </div>
+          {price != null && (
+            <div className="mb-5">
+              <label className="mb-1 block font-medium">Estimated Total</label>
+              <input
+                readOnly
+                value={nights > 0 ? `Rs. ${computedAmount.toLocaleString()} (${nights} night${nights!==1?'s':''})` : ''}
+                placeholder="Select dates to see total"
+                className="w-full rounded-md border border-neutral-300 bg-neutral-100 px-3 py-2 text-[15px] outline-none" />
+            </div>
+          )}
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || (price != null && computedAmount <= 0)}
             className="w-full rounded-md bg-blue-600 py-3 font-semibold text-white shadow transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-neutral-500"
           >
             {loading ? 'Booking...' : 'Book'}

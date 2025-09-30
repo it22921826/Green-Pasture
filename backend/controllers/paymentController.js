@@ -1,6 +1,8 @@
 import Payment from "../models/payment.js";
 import nodemailer from "nodemailer";
 import { formatCurrency } from "../utils/currency.js";
+import Invoice from "../models/invoice.js";
+import { broadcastEvent } from "../index.js";
 const formatAmount = (v) => formatCurrency(v, { withSymbol: true });
 
 // Controller for manual payment submission
@@ -12,7 +14,15 @@ export const submitManualPayment = async (req, res) => {
       return res.status(400).json({ success: false, message: "No file uploaded" });
     }
 
-    // Save payment to DB
+    // 1. Create a new invoice (simple incremental number)
+    const last = await Invoice.findOne().sort({ createdAt: -1 });
+    const nextNum = (() => {
+      const lastNumber = parseInt((last?.invoiceNumber || 'INV000').replace('INV',''), 10) || 0;
+      return `INV${String(lastNumber + 1).padStart(3,'0')}`;
+    })();
+    const invoice = await Invoice.create({ invoiceNumber: nextNum, customerName, email, amount, status: 'pending' });
+
+    // 2. Save payment to DB
     const payment = await Payment.create({
       customerName,
       amount,
@@ -21,6 +31,9 @@ export const submitManualPayment = async (req, res) => {
       status: "pending",
       method: "manual_upload",
     });
+
+    broadcastEvent?.('invoice.created', { id: invoice._id, invoiceNumber: invoice.invoiceNumber });
+    broadcastEvent?.('payment.created', { id: payment._id, invoiceId: invoice._id });
 
     // Send confirmation email to customer
     if (email) {
@@ -60,6 +73,7 @@ export const submitManualPayment = async (req, res) => {
       success: true,
       message: "Payment submitted successfully",
       data: payment,
+      invoice,
       fileUrl: `/uploads/${req.file.filename}`,
     });
   } catch (err) {

@@ -3,12 +3,15 @@ import { formatCurrency } from '../utils/currency';
 import { getAllFacilityBookings, updateFacilityBooking, cancelFacilityBooking } from "../api/facilityApi";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { addBrandedHeader, addGeneratedLine } from '../utils/pdfHeader';
 
 const FacilityBookingTable = ({ bookings: incoming }) => {
 	const [bookings, setBookings] = useState(incoming || []);
+	const [filtered, setFiltered] = useState(incoming || []);
 	const [loading, setLoading] = useState(!incoming);
 	const [error, setError] = useState("");
 	const [actionId, setActionId] = useState(""); // row-level loading indicator
+	const [search, setSearch] = useState("");
 
 	useEffect(() => {
 		if (incoming && Array.isArray(incoming)) return; // use provided data
@@ -21,7 +24,8 @@ const FacilityBookingTable = ({ bookings: incoming }) => {
 		(async () => {
 			try {
 				const data = await getAllFacilityBookings(token);
-				setBookings(Array.isArray(data) ? data : []);
+				const base = Array.isArray(data) ? data : [];
+				setBookings(base);
 			} catch (err) {
 				setError(err?.message || "Failed to load facility bookings");
 			} finally {
@@ -29,6 +33,23 @@ const FacilityBookingTable = ({ bookings: incoming }) => {
 			}
 		})();
 	}, [incoming]);
+
+	useEffect(() => {
+		setFiltered(bookings);
+	}, [bookings]);
+
+	useEffect(() => {
+		const term = search.trim().toLowerCase();
+		if (!term) return setFiltered(bookings);
+		setFiltered(bookings.filter(b => {
+			const ref = (b.bookingReference || '').toLowerCase();
+			const facility = (b.facility?.name || b.facility || '').toString().toLowerCase();
+			const type = (b.facility?.type || '').toLowerCase();
+			const guest = (b.guest?.name || b.guest || '').toString().toLowerCase();
+			const status = (b.status || '').toLowerCase();
+			return ref.includes(term) || facility.includes(term) || type.includes(term) || guest.includes(term) || status.includes(term);
+		}));
+	}, [search, bookings]);
 
 	if (loading) return <div className="my-8 text-center text-[18px] text-neutral-600">Loading facility bookings...</div>;
 	if (error)
@@ -40,14 +61,11 @@ const FacilityBookingTable = ({ bookings: incoming }) => {
 	if (!bookings || bookings.length === 0)
 		return <div className="my-4 text-center text-neutral-600">No facility bookings found.</div>;
 
-	const downloadPdf = () => {
+	const downloadPdf = async () => {
 		try {
 			const doc = new jsPDF();
-			const today = new Date().toLocaleDateString();
-			doc.setFontSize(16);
-			doc.text("Facility Bookings Report", 14, 16);
-			doc.setFontSize(10);
-			doc.text(`Generated: ${today}`, 14, 22);
+			const startY = await addBrandedHeader(doc, 'Facility Bookings Report');
+			addGeneratedLine(doc, startY, 'Generated');
 
 			const head = [[
 				"Reference",
@@ -78,8 +96,8 @@ const FacilityBookingTable = ({ bookings: incoming }) => {
 				head,
 				body,
 				styles: { fontSize: 9 },
-				headStyles: { fillColor: [0, 11, 88] },
-				startY: 28,
+				headStyles: { fillColor: [0, 11, 88], halign: 'center' },
+				startY,
 			});
 
 			const date = new Date().toISOString().slice(0, 10);
@@ -118,6 +136,16 @@ const FacilityBookingTable = ({ bookings: incoming }) => {
 
 	return (
 		<div className="mt-5 overflow-x-auto">
+			<div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+				<input
+					type="text"
+					value={search}
+					onChange={e => setSearch(e.target.value)}
+					placeholder="Search facility bookings (reference, facility, type, guest, status)"
+					className="w-full max-w-xl rounded border border-neutral-300 px-3 py-2 text-sm shadow-sm focus:border-[#000B58] focus:outline-none"
+				/>
+				<div className="text-xs text-neutral-500">{search ? `${filtered.length} / ${bookings.length} shown` : `${bookings.length} total`}</div>
+			</div>
 			<div className="mb-3 flex items-center justify-end">
 				<button
 					type="button"
@@ -145,7 +173,7 @@ const FacilityBookingTable = ({ bookings: incoming }) => {
 					</tr>
 				</thead>
 				<tbody>
-					{bookings.map((b, i) => (
+					{filtered.map((b, i) => (
 						<tr
 							key={b._id || b.bookingReference || i}
 							className={i % 2 === 0 ? "bg-neutral-50 hover:bg-blue-50" : "bg-white hover:bg-blue-50"}

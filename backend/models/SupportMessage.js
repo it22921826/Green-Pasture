@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const SupportMessageSchema = new mongoose.Schema(
   {
@@ -13,4 +13,5 @@ const SupportMessageSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-module.exports = mongoose.model('SupportMessage', SupportMessageSchema);
+const SupportMessage = mongoose.model('SupportMessage', SupportMessageSchema);
+export default SupportMessage;

@@ -39,7 +39,15 @@ const Rooms = () => {
         setLoading(false);
       }
     })();
-    return () => { isMounted = false; };
+    const handleFreed = (e) => {
+      const rn = String(e.detail?.roomNumber || '').trim();
+      if (!rn) return;
+      setRooms(prev => prev.map(r => (String(r.roomNumber).trim() === rn ? { ...r, status: 'Available' } : r)));
+      // Light refetch after short delay to ensure backend persisted state
+      setTimeout(() => { fetchRooms(); }, 600);
+    };
+    window.addEventListener('room:freed', handleFreed);
+    return () => { isMounted = false; window.removeEventListener('room:freed', handleFreed); };
   }, []);
 
   const handleFilterChange = (e) => {

@@ -1,9 +1,9 @@
-const mongoose = require('mongoose');
-const Facility = require('../models/Facility');
-const FacilityBooking = require('../models/FacilityBooking');
+import mongoose from 'mongoose';
+import Facility from '../models/Facility.js';
+import FacilityBooking from '../models/FacilityBooking.js';
 
 // Get all facilities
-exports.getAllFacilities = async (req, res) => {
+export const getAllFacilities = async (req, res) => {
   try {
     const { type, location, minPrice, maxPrice } = req.query;
     let filter = { isAvailable: true };
@@ -24,7 +24,7 @@ exports.getAllFacilities = async (req, res) => {
 };
 
 // Get facility by ID
-exports.getFacilityById = async (req, res) => {
+export const getFacilityById = async (req, res) => {
   try {
     const facility = await Facility.findById(req.params.id);
     if (!facility) {
@@ -37,7 +37,7 @@ exports.getFacilityById = async (req, res) => {
 };
 
 // Create facility (Admin/Staff only)
-exports.createFacility = async (req, res) => {
+export const createFacility = async (req, res) => {
   try {
     const facility = await Facility.create(req.body);
   res.status(201).json({ currency: 'LKR', symbol: 'Rs.', item: facility });
@@ -47,7 +47,7 @@ exports.createFacility = async (req, res) => {
 };
 
 // Update facility (Admin/Staff only)
-exports.updateFacility = async (req, res) => {
+export const updateFacility = async (req, res) => {
   try {
     const facility = await Facility.findById(req.params.id);
     if (!facility) {
@@ -62,7 +62,7 @@ exports.updateFacility = async (req, res) => {
 };
 
 // Delete facility (Admin only)
-exports.deleteFacility = async (req, res) => {
+export const deleteFacility = async (req, res) => {
   try {
     const facility = await Facility.findById(req.params.id);
     if (!facility) {
@@ -76,7 +76,7 @@ exports.deleteFacility = async (req, res) => {
 };
 
 // Create facility booking
-exports.createFacilityBooking = async (req, res) => {
+export const createFacilityBooking = async (req, res) => {
   try {
     const { 
       facilityId, 
@@ -105,6 +105,22 @@ exports.createFacilityBooking = async (req, res) => {
     if (!numberOfGuests || Number(numberOfGuests) < 1) {
       return res.status(400).json({ message: 'numberOfGuests must be at least 1' });
     }
+    // Contact info required
+    if (!contactInfo || !contactInfo.phone || !contactInfo.email || !contactInfo.emergencyContact) {
+      return res.status(400).json({ message: 'phone, email and emergencyContact are required in contactInfo' });
+    }
+    const phone = String(contactInfo.phone).trim();
+    const email = String(contactInfo.email).trim();
+    const emergencyContact = String(contactInfo.emergencyContact).trim();
+    if (!/^[0-9]{9,15}$/.test(phone)) {
+      return res.status(400).json({ message: 'Invalid phone format (digits only 9-15)' });
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ message: 'Invalid email format' });
+    }
+    if (!/^[0-9]{9,15}$/.test(emergencyContact)) {
+      return res.status(400).json({ message: 'Invalid emergencyContact format (digits only 9-15)' });
+    }
 
     // Get facility details
     const facility = await Facility.findById(facilityId);
@@ -122,11 +138,15 @@ exports.createFacilityBooking = async (req, res) => {
     }
 
     // Calculate dates and pricing
-    const checkInDate = new Date(checkIn);
-    const checkOutDate = new Date(checkOut);
+  const checkInDate = new Date(checkIn);
+  const checkOutDate = new Date(checkOut);
+  const todayMidnight = new Date(); todayMidnight.setHours(0,0,0,0);
 
     if (isNaN(checkInDate.getTime()) || isNaN(checkOutDate.getTime())) {
       return res.status(400).json({ message: 'Invalid date format for checkIn/checkOut' });
+    }
+    if (checkInDate < todayMidnight) {
+      return res.status(400).json({ message: 'Check-in cannot be in the past' });
     }
     const totalNights = Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24));
     
@@ -140,11 +160,22 @@ exports.createFacilityBooking = async (req, res) => {
     // Apply discount if provided
     let discountAmount = 0;
     if (discountCode) {
-      // Simple discount logic - can be enhanced
-      if (discountCode.toUpperCase() === 'HERITAGE10') {
+      const code = String(discountCode).trim().toUpperCase();
+      if (!/^[A-Z0-9]{4,15}$/.test(code)) {
+        return res.status(400).json({ message: 'Invalid discount code format' });
+      }
+      if (code === 'HERITAGE10') {
         discountAmount = totalAmount * 0.1;
-      } else if (discountCode.toUpperCase() === 'EARLY20') {
+      } else if (code === 'EARLY20') {
         discountAmount = totalAmount * 0.2;
+      }
+    }
+
+    let sanitizedRequests = specialRequests;
+    if (sanitizedRequests && typeof sanitizedRequests === 'string') {
+      sanitizedRequests = sanitizedRequests.trim();
+      if (sanitizedRequests.length > 400) {
+        return res.status(400).json({ message: 'Special requests must be 400 characters or less' });
       }
     }
     
@@ -188,8 +219,10 @@ exports.createFacilityBooking = async (req, res) => {
       discountAmount,
       finalAmount,
       flexibleDates,
-      specialRequests,
+  specialRequests: sanitizedRequests,
       contactInfo,
+  // ensure sanitized contactInfo saved
+  // (trimmed already)
       status: 'PendingPayment',
       paymentStatus: 'Pending'
     });
@@ -203,7 +236,7 @@ exports.createFacilityBooking = async (req, res) => {
 };
 
 // Get user's facility bookings
-exports.getMyFacilityBookings = async (req, res) => {
+export const getMyFacilityBookings = async (req, res) => {
   try {
     const bookings = await FacilityBooking.find({ guest: req.user._id })
       .populate('facility', 'name type location images pricePerNight')
@@ -216,7 +249,7 @@ exports.getMyFacilityBookings = async (req, res) => {
 };
 
 // Get all facility bookings (Staff/Admin)
-exports.getAllFacilityBookings = async (req, res) => {
+export const getAllFacilityBookings = async (req, res) => {
   try {
     const bookings = await FacilityBooking.find()
       .populate('facility guest staff')
@@ -228,7 +261,7 @@ exports.getAllFacilityBookings = async (req, res) => {
 };
 
 // Update facility booking
-exports.updateFacilityBooking = async (req, res) => {
+export const updateFacilityBooking = async (req, res) => {
   try {
     const booking = await FacilityBooking.findById(req.params.id);
     if (!booking) {
@@ -253,7 +286,7 @@ exports.updateFacilityBooking = async (req, res) => {
 };
 
 // Cancel facility booking
-exports.cancelFacilityBooking = async (req, res) => {
+export const cancelFacilityBooking = async (req, res) => {
   try {
     const booking = await FacilityBooking.findById(req.params.id);
     if (!booking) {
@@ -277,7 +310,7 @@ exports.cancelFacilityBooking = async (req, res) => {
 };
 
 // Delete facility booking (Admin only)
-exports.deleteFacilityBooking = async (req, res) => {
+export const deleteFacilityBooking = async (req, res) => {
   try {
     const booking = await FacilityBooking.findById(req.params.id);
     if (!booking) {
@@ -297,7 +330,7 @@ exports.deleteFacilityBooking = async (req, res) => {
 };
 
 // Mark facility booking as paid (Staff/Admin or owner auto-confirm if policy allows)
-exports.markFacilityBookingPaid = async (req, res) => {
+export const markFacilityBookingPaid = async (req, res) => {
   try {
     const booking = await FacilityBooking.findById(req.params.id).populate('facility guest');
     if (!booking) return res.status(404).json({ message: 'Booking not found' });

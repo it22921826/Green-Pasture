@@ -1,5 +1,5 @@
-const express = require('express');
-const {
+import express from 'express';
+import {
   getAllFacilities,
   getFacilityById,
   createFacility,
@@ -12,9 +12,9 @@ const {
   cancelFacilityBooking,
   deleteFacilityBooking,
   markFacilityBookingPaid
-} = require('../controllers/facilityController');
-const { protect } = require('../middlewares/authMiddleware');
-const { authorizeRoles } = require('../middlewares/roleMiddleware');
+} from '../controllers/facilityController.js';
+import { protect } from '../middlewares/authMiddleware.js';
+import { authorizeRoles } from '../middlewares/roleMiddleware.js';
 
 const router = express.Router();
 
@@ -34,4 +34,4 @@ router.put('/:id', protect, authorizeRoles('Admin', 'Staff'), updateFacility);
 router.delete('/:id', protect, authorizeRoles('Admin'), deleteFacility);
 router.get('/:id', getFacilityById); // Keep this last to avoid shadowing
 
-module.exports = router;
+export default router;

@@ -1,6 +1,6 @@
-const Room = require('../models/Room');
-const path = require('path');
-const fs = require('fs');
+import Room from '../models/Room.js';
+import path from 'path';
+import fs from 'fs';
 
 // Robust helper to build a public URL for uploaded files relative to uploads root
 const toPublicPath = (req, filepath) => {
@@ -23,7 +23,7 @@ const toPublicPath = (req, filepath) => {
 };
 
 // GET /api/rooms?type=&status=&minPrice=&maxPrice=
-exports.getRooms = async (req, res) => {
+export const getRooms = async (req, res) => {
   try {
     const { type, status, minPrice, maxPrice } = req.query;
     const filter = {};
@@ -44,7 +44,7 @@ exports.getRooms = async (req, res) => {
 };
 
 // GET /api/rooms/:id
-exports.getRoomById = async (req, res) => {
+export const getRoomById = async (req, res) => {
   try {
     const room = await Room.findById(req.params.id);
   if (!room) return res.status(404).json({ message: 'Room not found' });
@@ -55,7 +55,7 @@ exports.getRoomById = async (req, res) => {
 };
 
 // POST /api/rooms (Admin/Staff) multipart/form-data with photos
-exports.createRoom = async (req, res) => {
+export const createRoom = async (req, res) => {
   try {
     const body = { ...req.body };
     console.log('[createRoom] body keys:', Object.keys(body));
@@ -111,7 +111,7 @@ exports.createRoom = async (req, res) => {
 };
 
 // PUT /api/rooms/:id (Admin/Staff) multipart/form-data allowed
-exports.updateRoom = async (req, res) => {
+export const updateRoom = async (req, res) => {
   try {
     const room = await Room.findById(req.params.id);
     if (!room) return res.status(404).json({ message: 'Room not found' });
@@ -191,7 +191,7 @@ exports.updateRoom = async (req, res) => {
 };
 
 // DELETE /api/rooms/:id (Admin)
-exports.deleteRoom = async (req, res) => {
+export const deleteRoom = async (req, res) => {
   try {
     const room = await Room.findById(req.params.id);
     if (!room) return res.status(404).json({ message: 'Room not found' });

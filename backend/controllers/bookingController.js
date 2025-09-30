@@ -1,8 +1,8 @@
-const Booking = require('../models/Booking');
-const Room = require('../models/Room');
+import Booking from '../models/Booking.js';
+import Room from '../models/Room.js';
 
 // Create booking (also updates Room status to 'Booked')
-exports.createBooking = async (req, res) => {
+export const createBooking = async (req, res) => {
   try {
     let { roomNumber, checkIn, checkOut, specialRequests, paymentConfirmation } = req.body;
     if (typeof roomNumber === 'string') roomNumber = roomNumber.trim();
@@ -41,7 +41,7 @@ exports.createBooking = async (req, res) => {
 };
 
 // Get bookings for user
-exports.getMyBookings = async (req, res) => {
+export const getMyBookings = async (req, res) => {
   try {
     const bookings = await Booking.find({ guest: req.user._id })
       .populate('guest', 'name email')
@@ -53,7 +53,7 @@ exports.getMyBookings = async (req, res) => {
 };
 
 // Staff/Admin: Get all bookings
-exports.getAllBookings = async (req, res) => {
+export const getAllBookings = async (req, res) => {
   try {
     const bookings = await Booking.find().populate('guest staff');
     res.json(bookings);
@@ -63,7 +63,7 @@ exports.getAllBookings = async (req, res) => {
 };
 
 // Update booking
-exports.updateBooking = async (req, res) => {
+export const updateBooking = async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id);
     if (!booking) return res.status(404).json({ message: 'Booking not found' });
@@ -76,7 +76,7 @@ exports.updateBooking = async (req, res) => {
 };
 
 // Delete booking
-exports.deleteBooking = async (req, res) => {
+export const deleteBooking = async (req, res) => {
   try {
     await Booking.findByIdAndDelete(req.params.id);
     res.json({ message: 'Booking deleted' });
@@ -86,7 +86,7 @@ exports.deleteBooking = async (req, res) => {
 };
 
 // Mark booking as paid (called after payment proof accepted)
-exports.markBookingPaid = async (req, res) => {
+export const markBookingPaid = async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id);
     if (!booking) return res.status(404).json({ message: 'Booking not found' });
@@ -99,6 +99,38 @@ exports.markBookingPaid = async (req, res) => {
     await booking.save();
     res.json(booking);
   } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Cancel booking (Guest can cancel own, Staff/Admin can cancel any)
+export const cancelBooking = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+
+    // Authorization: guest only their own
+    const role = (req.user.role || '').toLowerCase();
+    if (role === 'guest' && String(booking.guest) !== String(req.user._id)) {
+      return res.status(403).json({ message: 'Not authorized to cancel this booking' });
+    }
+
+    if (booking.status === 'Cancelled') {
+      return res.status(200).json({ message: 'Already cancelled', booking });
+    }
+
+    booking.status = 'Cancelled';
+    await booking.save();
+
+    // Free associated room if currently booked
+    const room = await Room.findOne({ roomNumber: booking.roomNumber });
+    if (room && room.status === 'Booked') {
+      room.status = 'Available';
+      await room.save();
+    }
+    res.json({ message: 'Booking cancelled', booking });
+  } catch (error) {
+    console.error('[cancelBooking] Error:', error);
     res.status(500).json({ message: error.message });
   }
 };

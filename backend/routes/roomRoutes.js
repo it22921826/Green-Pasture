@@ -1,14 +1,14 @@
-const express = require('express');
-const { protect } = require('../middlewares/authMiddleware');
-const { authorizeRoles } = require('../middlewares/roleMiddleware');
-const { uploadRoomPhotos } = require('../middlewares/upload');
-const {
+import express from 'express';
+import { protect } from '../middlewares/authMiddleware.js';
+import { authorizeRoles } from '../middlewares/roleMiddleware.js';
+import { uploadRoomPhotos } from '../middlewares/upload.js';
+import {
   getRooms,
   getRoomById,
   createRoom,
   updateRoom,
   deleteRoom,
-} = require('../controllers/roomController');
+} from '../controllers/roomController.js';
 
 const router = express.Router();
 
@@ -36,4 +36,4 @@ router.put(
 // Admin/Staff delete
 router.delete('/:id', protect, authorizeRoles('Admin', 'Staff'), deleteRoom);
 
-module.exports = router;
+export default router;

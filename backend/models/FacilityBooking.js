@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const facilityBookingSchema = new mongoose.Schema({
   guest: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
@@ -46,4 +46,5 @@ const facilityBookingSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
-module.exports = mongoose.model('FacilityBooking', facilityBookingSchema);
+const FacilityBooking = mongoose.model('FacilityBooking', facilityBookingSchema);
+export default FacilityBooking;

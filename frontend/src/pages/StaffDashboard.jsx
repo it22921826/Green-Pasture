@@ -2,9 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { formatCurrency } from '../utils/currency';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { addBrandedHeader, addGeneratedLine } from '../utils/pdfHeader';
 import { getAllBookings } from '../api/bookingApi';
 import BookingTable from '../components/BookingTable';
 import FacilityBookingTable from '../components/FacilityBookingTable';
+import Invoice from '../components/Invoice';
 import { getRooms, createRoom, updateRoom, deleteRoom } from '../api/roomApi';
 
 const StaffDashboard = () => {
@@ -12,10 +14,11 @@ const StaffDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [rooms, setRooms] = useState([]);
+  const [roomSearch, setRoomSearch] = useState('');
   const [roomForm, setRoomForm] = useState({ roomNumber: '', type: 'Single', price: '', amenities: '', status: 'Available', photos: [], description: '', capacity: 2 });
   const [removePhotos, setRemovePhotos] = useState([]);
   const [editingRoom, setEditingRoom] = useState(null);
-  const [activeTab, setActiveTab] = useState('bookings'); // 'bookings' | 'facility' | 'rooms'
+  const [activeTab, setActiveTab] = useState('bookings'); // 'bookings' | 'facility' | 'rooms' | 'invoices'
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -37,14 +40,26 @@ const StaffDashboard = () => {
   const todayBookings = bookings.filter(b => b.date && b.date.startsWith(today)).length;
   const MAX_ROOMS = 50;
   const atRoomLimit = (rooms?.length || 0) >= MAX_ROOMS;
+  const filteredRooms = roomSearch.trim()
+    ? rooms.filter(r => {
+        const term = roomSearch.trim().toLowerCase();
+        return (
+          (r.roomNumber?.toString() || '').toLowerCase().includes(term) ||
+          (r.type || '').toLowerCase().includes(term) ||
+          (r.status || '').toLowerCase().includes(term) ||
+          (Array.isArray(r.amenities) ? r.amenities.join(',') : r.amenities || '')
+            .toString()
+            .toLowerCase()
+            .includes(term)
+        );
+      })
+    : rooms;
 
-  const downloadBookingsPdf = () => {
+  const downloadBookingsPdf = async () => {
     try {
       const doc = new jsPDF();
-      doc.setFontSize(16);
-      doc.text('Room Bookings Report', 14, 16);
-      doc.setFontSize(10);
-      doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 22);
+      const startY = await addBrandedHeader(doc, 'Room Bookings Report');
+      addGeneratedLine(doc, startY, 'Generated');
 
       const head = [[
         'Room', 'Check-In', 'Check-Out', 'Status', 'Guest', 'Staff', 'Requests'
@@ -59,7 +74,7 @@ const StaffDashboard = () => {
         b.specialRequests || '-'
       ]);
 
-      autoTable(doc, { head, body, headStyles: { fillColor: [0,11,88] }, styles: { fontSize: 9 }, startY: 28 });
+      autoTable(doc, { head, body, headStyles: { fillColor: [0,11,88], halign: 'center' }, styles: { fontSize: 9 }, startY });
       const date = new Date().toISOString().slice(0,10);
       doc.save(`room_bookings_${date}.pdf`);
     } catch (e) {
@@ -68,23 +83,21 @@ const StaffDashboard = () => {
     }
   };
 
-  const downloadRoomsPdf = () => {
+  const downloadRoomsPdf = async () => {
     try {
       const doc = new jsPDF();
-      doc.setFontSize(16);
-      doc.text('Rooms Inventory Report', 14, 16);
-      doc.setFontSize(10);
-      doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 22);
+      const startY = await addBrandedHeader(doc, 'Rooms Inventory Report');
+      addGeneratedLine(doc, startY, 'Generated');
 
       const head = [[ 'Room', 'Type', 'Price', 'Status', 'Capacity' ]];
-      const body = (rooms || []).map(r => [
+  const body = (filteredRooms || []).map(r => [
         r.roomNumber ?? '-',
         r.type ?? '-',
   typeof r.price === 'number' ? formatCurrency(r.price) : r.price ?? '-',
         r.status ?? '-',
         r.capacity ?? '-'
       ]);
-      autoTable(doc, { head, body, headStyles: { fillColor: [0,11,88] }, styles: { fontSize: 9 }, startY: 28 });
+      autoTable(doc, { head, body, headStyles: { fillColor: [0,11,88], halign: 'center' }, styles: { fontSize: 9 }, startY });
       const date = new Date().toISOString().slice(0,10);
       doc.save(`rooms_${date}.pdf`);
     } catch (e) {
@@ -116,6 +129,12 @@ const StaffDashboard = () => {
             className={`rounded px-4 py-2 text-sm font-medium shadow ${activeTab === 'rooms' ? 'bg-[#000B58] text-white' : 'bg-neutral-100 text-neutral-800 hover:bg-neutral-200'}`}
           >
             Manage Rooms
+          </button>
+          <button
+            onClick={() => setActiveTab('invoices')}
+            className={`rounded px-4 py-2 text-sm font-medium shadow ${activeTab === 'invoices' ? 'bg-[#000B58] text-white' : 'bg-neutral-100 text-neutral-800 hover:bg-neutral-200'}`}
+          >
+            Invoices
           </button>
         </div>
         {error && (
@@ -154,13 +173,44 @@ const StaffDashboard = () => {
           </div>
         )}
 
+        {/* Invoices management */}
+        {activeTab === 'invoices' && (
+          <div className="mt-10">
+            <h3 className="mb-4 text-xl font-semibold text-neutral-900">Manage Invoices</h3>
+            <div className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm">
+              <Invoice />
+            </div>
+          </div>
+        )}
+
         {/* Rooms management for Staff/Admin */}
         {activeTab === 'rooms' && (
           <div className="mt-10">
             <h3 className="mb-4 text-xl font-semibold text-neutral-900">Manage Rooms</h3>
             <div className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm">
-              <div className="mb-3 flex items-center justify-end">
-                <button onClick={downloadRoomsPdf} className="rounded bg-[#000B58] px-3 py-2 text-white shadow hover:bg-[#001050]">⬇️ Download Rooms PDF</button>
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex w-full max-w-md items-center gap-2">
+                  <input
+                    type="text"
+                    value={roomSearch}
+                    onChange={e => setRoomSearch(e.target.value)}
+                    placeholder="Search rooms (number, type, status, amenities)"
+                    className="w-full rounded border border-neutral-300 px-3 py-2 text-sm shadow-sm focus:border-[#000B58] focus:outline-none"
+                  />
+                  {roomSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setRoomSearch('')}
+                      className="rounded bg-neutral-300 px-2 py-1 text-xs text-neutral-700 hover:bg-neutral-400"
+                    >Clear</button>
+                  )}
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-neutral-500">
+                    {roomSearch ? `${filteredRooms.length} / ${rooms.length} rooms` : `${rooms.length} rooms`}
+                  </span>
+                  <button onClick={downloadRoomsPdf} className="rounded bg-[#000B58] px-3 py-2 text-white shadow hover:bg-[#001050]">⬇️ PDF</button>
+                </div>
               </div>
               <form
                 onSubmit={async (e) => {
@@ -313,14 +363,19 @@ const StaffDashboard = () => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {rooms.map((r) => (
-                      <tr key={r._id}>
-                        <td className="px-6 py-4 whitespace-nowrap">Room {r.roomNumber}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">{r.type}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">{formatCurrency(r.price)}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">{r.status}</td>
+                    {filteredRooms.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="px-6 py-6 text-center text-sm text-neutral-500">No rooms match your search.</td>
+                      </tr>
+                    )}
+                    {filteredRooms.map((r) => (
+                      <tr key={r._id || r.roomNumber}>
+                        <td className="px-6 py-4 whitespace-nowrap">Room {r.roomNumber ?? '-'}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">{r.type ?? '-'}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">{typeof r.price === 'number' ? formatCurrency(r.price) : (r.price ?? '-')}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">{r.status ?? '-'}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium flex gap-3">
-                          <button className="text-blue-600 hover:text-blue-900" onClick={()=>{setEditingRoom(r); setRoomForm({ roomNumber: r.roomNumber, type: r.type, price: r.price, amenities: (r.amenities||[]).join(','), status: r.status, photos: [], description: r.description || '', capacity: r.capacity || 2 }); setRemovePhotos([]);}}>Edit</button>
+                          <button className="text-blue-600 hover:text-blue-900" onClick={()=>{setEditingRoom(r); setRoomForm({ roomNumber: r.roomNumber || '', type: r.type || 'Single', price: r.price || '', amenities: (r.amenities||[]).join(','), status: r.status || 'Available', photos: [], description: r.description || '', capacity: r.capacity || 2 }); setRemovePhotos([]);}}>Edit</button>
                           <button className="text-red-600 hover:text-red-900" onClick={async()=>{ if(!window.confirm('Delete this room?')) return; try{ const token = localStorage.getItem('token'); await deleteRoom(r._id, token); const refreshed = await getRooms(); setRooms(refreshed||[]);}catch(err){ alert(err.message||'Failed to delete'); } }}>Delete</button>
                         </td>
                       </tr>

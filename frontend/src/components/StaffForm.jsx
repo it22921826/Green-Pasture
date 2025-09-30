@@ -18,15 +18,32 @@ const StaffForm = ({ onSubmit, onCancel, initialData = {} }) => {
     });
   }, [initialData]);
 
+  const [errors, setErrors] = useState({});
+
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    if (name === 'name') {
+      // Allow only letters and spaces
+      if (/^[A-Za-z ]*$/.test(value)) {
+        setFormData((prev) => ({ ...prev, [name]: value }));
+        setErrors((prev) => ({ ...prev, name: '' }));
+      } else {
+        setErrors((prev) => ({ ...prev, name: 'Letters and spaces only' }));
+      }
+    } else {
+      setFormData((prev) => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (!formData.name.trim() || errors.name) {
+      setErrors((prev) => ({ ...prev, name: prev.name || 'Name is required' }));
+      return;
+    }
     onSubmit(formData);
     setFormData({ name: "", role: "", department: "", salary: "" });
+    setErrors({});
   };
 
   return (
@@ -46,9 +63,12 @@ const StaffForm = ({ onSubmit, onCancel, initialData = {} }) => {
           value={formData.name}
           onChange={handleChange}
           required
-          style={inputStyle}
+          style={{ ...inputStyle, borderColor: errors.name ? '#dc2626' : '#ccc' }}
           placeholder="Enter staff name"
         />
+        {errors.name && (
+          <span style={{ color: '#dc2626', fontSize: '12px', marginTop: '4px' }}>{errors.name}</span>
+        )}
       </div>
 
       <div style={formGroup}>

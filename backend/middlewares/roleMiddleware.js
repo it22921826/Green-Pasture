@@ -1,4 +1,4 @@
-exports.authorizeRoles = (...roles) => {
+export const authorizeRoles = (...roles) => {
   const normalize = (s) => (s ? String(s).trim().toLowerCase() : '');
   const allowed = roles.map((r) => normalize(r));
   return (req, res, next) => {

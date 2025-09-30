@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { register } from '../api/userApi';
+import Hotel from '../assets/Hotel.jpg';
 
 const Register = () => {
   const [form, setForm] = useState({
@@ -43,8 +44,18 @@ const Register = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-500/25 to-purple-700 p-5">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8">
+    <div
+      className="relative min-h-screen flex items-center justify-center p-6 md:p-10"
+      style={{
+        backgroundImage: `url(${Hotel})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+        backgroundAttachment: 'fixed'
+      }}
+    >
+      <div className="absolute inset-0 bg-black/50" />
+      <div className="relative w-full max-w-md rounded-2xl border border-white/25 bg-white/70 backdrop-blur-xl shadow-2xl p-8">
         <h2 className="text-center mb-6 text-2xl font-bold text-neutral-900">Create an Account</h2>
 
         {/* Error message */}
@@ -179,9 +190,9 @@ const Register = () => {
         </form>
 
         {/* Login link */}
-        <p className="mt-5 text-center text-sm">
+        <p className="mt-5 text-center text-sm text-neutral-100">
           Already have an account?{' '}
-          <Link to="/login" className="font-medium text-blue-600 hover:underline">Login here</Link>
+          <Link to="/login" className="font-medium text-blue-100 underline-offset-2 hover:underline">Login here</Link>
         </p>
       </div>
     </div>

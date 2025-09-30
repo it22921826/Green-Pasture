@@ -1,8 +1,8 @@
-const express = require('express');
+import express from 'express';
+import * as userController from '../controllers/userController.js';
+import { protect } from '../middlewares/authMiddleware.js';
+import { authorizeRoles } from '../middlewares/roleMiddleware.js';
 const router = express.Router();
-const userController = require('../controllers/userController');
-const { protect } = require('../middlewares/authMiddleware');
-const { authorizeRoles } = require('../middlewares/roleMiddleware');
 
 // Public routes
 router.post('/register', userController.register);
@@ -19,4 +19,4 @@ router.get('/', protect, authorizeRoles('Admin'), userController.getAllUsers);
 router.delete('/delete-guest/:id', protect, userController.deleteGuest);
 router.delete('/:id', protect, authorizeRoles('Admin'), userController.deleteUser);
 
-module.exports = router;
+export default router;

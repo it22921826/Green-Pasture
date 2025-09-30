@@ -8,3 +8,4 @@ export const getMyBookings = (token) => axios.get(`${API_URL}/my`, { headers: { 
 export const getAllBookings = (token) => axios.get(API_URL, { headers: { Authorization: `Bearer ${token}` } });
 export const updateBooking = (id, data, token) => axios.put(`${API_URL}/${id}`, data, { headers: { Authorization: `Bearer ${token}` } });
 export const deleteBooking = (id, token) => axios.delete(`${API_URL}/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+export const cancelBooking = (id, token) => axios.patch(`${API_URL}/${id}/cancel`, {}, { headers: { Authorization: `Bearer ${token}` } });

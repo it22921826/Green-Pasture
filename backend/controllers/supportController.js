@@ -1,7 +1,7 @@
-const SupportMessage = require('../models/SupportMessage');
+import SupportMessage from '../models/SupportMessage.js';
 
 // Create a support message (public - users may or may not be logged in)
-exports.createSupportMessage = async (req, res) => {
+export const createSupportMessage = async (req, res) => {
   try {
     const { name, email, phone, subject, message } = req.body;
     if (!name || !email || !subject || !message) {
@@ -25,7 +25,7 @@ exports.createSupportMessage = async (req, res) => {
 };
 
 // Get all support messages (admin only)
-exports.getAllSupportMessages = async (req, res) => {
+export const getAllSupportMessages = async (req, res) => {
   try {
     const items = await SupportMessage.find().sort({ createdAt: -1 });
     return res.json(items);
@@ -36,7 +36,7 @@ exports.getAllSupportMessages = async (req, res) => {
 };
 
 // Update message status (admin only)
-exports.updateSupportStatus = async (req, res) => {
+export const updateSupportStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body; // 'Open' or 'Resolved'

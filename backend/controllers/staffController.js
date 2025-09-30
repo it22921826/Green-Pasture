@@ -1,7 +1,7 @@
-const Staff = require('../models/Staff');
+import Staff from '../models/Staff.js';
 
 // Get all staff members
-exports.getAllStaff = async (req, res) => {
+export const getAllStaff = async (req, res) => {
   try {
     console.log('Fetching all staff records...'); // Debugging log
     const staff = await Staff.find();
@@ -14,7 +14,7 @@ exports.getAllStaff = async (req, res) => {
 };
 
 // Get a single staff member by ID
-exports.getStaffById = async (req, res) => {
+export const getStaffById = async (req, res) => {
   try {
     const staff = await Staff.findById(req.params.id);
     if (!staff) {
@@ -27,7 +27,7 @@ exports.getStaffById = async (req, res) => {
 };
 
 // Create a new staff member
-exports.createStaff = async (req, res) => {
+export const createStaff = async (req, res) => {
   try {
     console.log('[staffController] createStaff payload:', req.body);
     const newStaff = new Staff(req.body);
@@ -41,7 +41,7 @@ exports.createStaff = async (req, res) => {
 };
 
 // Update a staff member by ID
-exports.updateStaff = async (req, res) => {
+export const updateStaff = async (req, res) => {
   try {
     const updatedStaff = await Staff.findByIdAndUpdate(req.params.id, req.body, { new: true });
     if (!updatedStaff) {
@@ -54,7 +54,7 @@ exports.updateStaff = async (req, res) => {
 };
 
 // Delete a staff member by ID
-exports.deleteStaff = async (req, res) => {
+export const deleteStaff = async (req, res) => {
   try {
     const deletedStaff = await Staff.findByIdAndDelete(req.params.id);
     if (!deletedStaff) {

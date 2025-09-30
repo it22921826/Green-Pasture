@@ -31,6 +31,7 @@ const FacilityBooking = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
 
   useEffect(() => {
     calculatePricing();
@@ -70,14 +71,6 @@ const FacilityBooking = () => {
     })();
     return () => { ignore = true; };
   }, []);
-
-  // Auto-select first facility when list loads
-  useEffect(() => {
-    if (facilities.length > 0 && !selectedFacility) {
-      setSelectedFacility(facilities[0]._id);
-    }
-  }, [facilities, selectedFacility]);
-
   const calculatePricing = () => {
     if (!selectedFacility || !form.checkIn || !form.checkOut) {
       setPricing({ totalNights: 0, pricePerNight: 0, totalAmount: 0, discountAmount: 0, finalAmount: 0 });
@@ -118,21 +111,25 @@ const FacilityBooking = () => {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    
+    // Sanitize digit-only targets
+    const digitTargets = ['contactInfo.phone', 'contactInfo.emergencyContact'];
+    let next = value;
+    if (digitTargets.includes(name)) {
+      next = value.replace(/[^0-9]/g, '');
+    }
     if (name.includes('contactInfo.')) {
       const field = name.split('.')[1];
       setForm(prev => ({
         ...prev,
-        contactInfo: {
-          ...prev.contactInfo,
-          [field]: value
-        }
+        contactInfo: { ...prev.contactInfo, [field]: next }
       }));
+      setFieldErrors(prev => ({ ...prev, [field]: '' }));
     } else {
       setForm(prev => ({
         ...prev,
-        [name]: name === 'numberOfGuests' ? Number(value) : (type === 'checkbox' ? checked : value)
+        [name]: name === 'numberOfGuests' ? Number(next) : (type === 'checkbox' ? checked : next)
       }));
+      setFieldErrors(prev => ({ ...prev, [name]: '' }));
     }
   };
 
@@ -142,24 +139,54 @@ const FacilityBooking = () => {
     setError('');
     setSuccess('');
 
-  const selected = facilities.find(f => f._id === selectedFacility);
-    if (!selected) {
-      setError('Please select a facility.');
+    // Client-side validation
+  const validationErrors = [];
+  const newFieldErrors = {};
+    const now = new Date();
+    const selected = facilities.find(f => f._id === selectedFacility);
+    const checkInDate = form.checkIn ? new Date(form.checkIn) : null;
+    const checkOutDate = form.checkOut ? new Date(form.checkOut) : null;
+
+    if (!selected) validationErrors.push('Please select a facility.');
+  if (!form.checkIn) { validationErrors.push('Check-in date is required.'); newFieldErrors.checkIn = 'Required'; }
+  if (!form.checkOut) { validationErrors.push('Check-out date is required.'); newFieldErrors.checkOut = 'Required'; }
+    if (checkInDate && checkInDate < new Date(now.toDateString())) {
+      validationErrors.push('Check-in cannot be in the past.');
+    }
+    if (checkInDate && checkOutDate && checkOutDate <= checkInDate) {
+      validationErrors.push('Check-out must be after check-in.');
+    }
+    if (selected && form.numberOfGuests > selected.maxGuests) {
+      validationErrors.push(`Number of guests exceeds capacity (max ${selected.maxGuests}).`);
+    }
+    if (form.numberOfGuests < 1) validationErrors.push('Number of guests must be at least 1.');
+    // Basic phone validation (Sri Lanka pattern optional + length 9-15)
+    // Contact required
+    if (!form.contactInfo.phone) { validationErrors.push('Phone number is required.'); newFieldErrors.phone = 'Required'; }
+    if (!form.contactInfo.email) { validationErrors.push('Email is required.'); newFieldErrors.email = 'Required'; }
+    if (!form.contactInfo.emergencyContact) { validationErrors.push('Emergency contact is required.'); newFieldErrors.emergencyContact = 'Required'; }
+    if (form.contactInfo.phone && !/^[0-9]{9,15}$/.test(form.contactInfo.phone)) {
+      validationErrors.push('Phone number must be 9-15 digits.'); newFieldErrors.phone = '9-15 digits'; }
+    if (form.contactInfo.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.contactInfo.email)) {
+      validationErrors.push('Email format is invalid.'); newFieldErrors.email = 'Invalid format'; }
+    if (form.contactInfo.emergencyContact && !/^[0-9]{9,15}$/.test(form.contactInfo.emergencyContact)) {
+      validationErrors.push('Emergency contact must be 9-15 digits.'); newFieldErrors.emergencyContact = '9-15 digits'; }
+    // Optional discount code pattern
+    if (form.discountCode && !/^[A-Z0-9]{4,15}$/i.test(form.discountCode)) {
+      validationErrors.push('Discount code should be 4-15 alphanumeric characters.');
+    }
+    // Limit special requests length
+    if (form.specialRequests && form.specialRequests.length > 400) {
+      validationErrors.push('Special requests must be 400 characters or less.');
+    }
+    if (validationErrors.length) {
+      setError(validationErrors[0]);
+      setFieldErrors(newFieldErrors);
       setLoading(false);
       return;
     }
 
-    if (new Date(form.checkOut) <= new Date(form.checkIn)) {
-      setError('Check-out date must be after check-in date.');
-      setLoading(false);
-      return;
-    }
-
-    if (!selectedFacility) {
-      setError('Please select a facility.');
-      setLoading(false);
-      return;
-    }
+    // Selected already validated above
 
     try {
       const token = localStorage.getItem('token');
@@ -344,31 +371,51 @@ const FacilityBooking = () => {
               <div className="space-y-4">
                 <h3 className="text-lg font-medium text-gray-700">Contact Information</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <input
-                    type="tel"
-                    name="contactInfo.phone"
-                    value={form.contactInfo.phone}
-                    onChange={handleChange}
-                    placeholder="Phone Number"
-                    className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#000B58] focus:border-transparent"
-                  />
-                  <input
-                    type="email"
-                    name="contactInfo.email"
-                    value={form.contactInfo.email}
-                    onChange={handleChange}
-                    placeholder="Email Address"
-                    className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#000B58] focus:border-transparent"
-                  />
+                  <div>
+                    <input
+                      type="text"
+                      name="contactInfo.phone"
+                      value={form.contactInfo.phone}
+                      onChange={handleChange}
+                      placeholder="Phone Number"
+                      inputMode="numeric"
+                      pattern="[0-9]{9,15}"
+                      maxLength={15}
+                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#000B58] focus:border-transparent ${fieldErrors.phone ? 'border-red-400' : 'border-gray-300'}`}
+                      required
+                    />
+                    <p className="mt-1 text-[11px] text-gray-500">Digits only (9-15).</p>
+                    {fieldErrors.phone && <p className="mt-1 text-xs text-red-600">{fieldErrors.phone}</p>}
+                  </div>
+                  <div>
+                    <input
+                      type="email"
+                      name="contactInfo.email"
+                      value={form.contactInfo.email}
+                      onChange={handleChange}
+                      placeholder="Email Address"
+                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#000B58] focus:border-transparent ${fieldErrors.email ? 'border-red-400' : 'border-gray-300'}`}
+                      required
+                    />
+                    {fieldErrors.email && <p className="mt-1 text-xs text-red-600">{fieldErrors.email}</p>}
+                  </div>
                 </div>
-                <input
-                  type="tel"
-                  name="contactInfo.emergencyContact"
-                  value={form.contactInfo.emergencyContact}
-                  onChange={handleChange}
-                  placeholder="Emergency Contact"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#000B58] focus:border-transparent"
-                />
+                <div>
+                  <input
+                    type="text"
+                    name="contactInfo.emergencyContact"
+                    value={form.contactInfo.emergencyContact}
+                    onChange={handleChange}
+                    placeholder="Emergency Contact"
+                    inputMode="numeric"
+                    pattern="[0-9]{9,15}"
+                    maxLength={15}
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#000B58] focus:border-transparent ${fieldErrors.emergencyContact ? 'border-red-400' : 'border-gray-300'}`}
+                    required
+                  />
+                  <p className="mt-1 text-[11px] text-gray-500">Digits only (9-15).</p>
+                  {fieldErrors.emergencyContact && <p className="mt-1 text-xs text-red-600">{fieldErrors.emergencyContact}</p>}
+                </div>
               </div>
 
               {/* Special Requests */}

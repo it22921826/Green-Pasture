@@ -1,30 +1,67 @@
 import React, { useEffect, useState } from "react";
-import { updateBooking } from "../api/bookingApi";
+import { cancelBooking } from "../api/bookingApi";
 
 const BookingTable = ({ bookings: incoming }) => {
   const [rows, setRows] = useState(incoming || []);
+  const [filtered, setFiltered] = useState(incoming || []);
   const [actionId, setActionId] = useState("");
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
-    setRows(Array.isArray(incoming) ? incoming : []);
+    const base = Array.isArray(incoming) ? incoming : [];
+    setRows(base);
   }, [incoming]);
 
+  useEffect(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return setFiltered(rows);
+    setFiltered(
+      rows.filter(b => {
+        const guest = (b.guest?.name || b.guest || '').toString().toLowerCase();
+        const staff = (b.staff?.name || b.staff || '').toString().toLowerCase();
+        const room = (b.roomNumber ?? '').toString().toLowerCase();
+        const status = (b.status || '').toLowerCase();
+        const req = (b.specialRequests || '').toLowerCase();
+        return guest.includes(term) || staff.includes(term) || room.includes(term) || status.includes(term) || req.includes(term);
+      })
+    );
+  }, [search, rows]);
+
   const cancel = async (id) => {
+    const token = localStorage.getItem("token");
+    setActionId(`cancel:${id}`);
+    // Optimistic update
+    const prev = rows;
+    setRows((p) => p.map(r => r._id === id ? { ...r, status: 'Cancelled' } : r));
     try {
-      setActionId(`cancel:${id}`);
-      const token = localStorage.getItem("token");
-      await updateBooking(id, { status: "Cancelled" }, token);
-      // Only update the status locally to preserve populated guest/staff objects
-      setRows((prev) => prev.map((r) => (r._id === id ? { ...r, status: "Cancelled" } : r)));
+      const { data } = await cancelBooking(id, token);
+      const roomNumber = data?.booking?.roomNumber || prev.find(r=>r._id===id)?.roomNumber;
+      if (roomNumber) {
+        window.dispatchEvent(new CustomEvent('room:freed', { detail: { roomNumber } }));
+      }
     } catch (err) {
-      alert(err?.message || "Failed to cancel booking");
+      // Revert on failure
+      setRows(prev);
+      alert(err?.response?.data?.message || err?.message || 'Failed to cancel booking');
     } finally {
-      setActionId("");
+      setActionId('');
     }
   };
 
   return (
     <div className="mt-5 overflow-x-auto">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <input
+          type="text"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Search bookings (guest, staff, room, status, requests)"
+          className="w-full max-w-md rounded border border-neutral-300 px-3 py-2 text-sm shadow-sm focus:border-[#000B58] focus:outline-none"
+        />
+        <div className="text-xs text-neutral-500">
+          {search ? `${filtered.length} / ${rows.length} shown` : `${rows.length} total`}
+        </div>
+      </div>
       <table className="w-full overflow-hidden rounded-xl border border-neutral-200 bg-white text-left shadow">
         <thead>
           <tr className="bg-[#000B58] text-white">
@@ -39,7 +76,7 @@ const BookingTable = ({ bookings: incoming }) => {
           </tr>
         </thead>
         <tbody>
-          {rows.map((b, i) => (
+          {filtered.map((b, i) => (
             <tr key={b._id} className={i % 2 === 0 ? "bg-neutral-50 hover:bg-blue-50" : "bg-white hover:bg-blue-50"}>
               <td className="px-5 py-3 text-sm text-neutral-800">{b.roomNumber}</td>
               <td className="px-5 py-3 text-sm text-neutral-800">{b.checkIn && new Date(b.checkIn).toLocaleDateString()}</td>

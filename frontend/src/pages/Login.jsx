@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import Hotel from "../assets/Hotel.jpg";
 import { useNavigate, Link } from "react-router-dom";
 import { login } from "../api/userApi"; // Ensure API is defined
 import { decodeToken, hasRole } from "../utils/authHelper";
@@ -46,8 +47,18 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-500/25 to-purple-700 p-5">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 text-center">
+    <div
+      className="relative min-h-screen flex items-center justify-center p-6 md:p-10"
+      style={{
+        backgroundImage: `url(${Hotel})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+        backgroundAttachment: 'fixed'
+      }}
+    >
+      <div className="absolute inset-0 bg-black/50" />
+      <div className="relative w-full max-w-md rounded-2xl border border-white/25 bg-white/70 backdrop-blur-xl shadow-2xl p-8 text-center">
         <h2 className="mb-2 text-2xl font-bold text-neutral-900">Welcome Back 👋</h2>
         <p className="mb-6 text-sm text-neutral-500">Please log in to continue</p>
 
@@ -115,9 +126,9 @@ const Login = () => {
         )}
 
         {/* Register Link */}
-        <div className="mt-5 text-center">
-          <span className="text-neutral-600">Don’t have an account? </span>
-          <Link to="/register" className="font-medium text-blue-600 hover:underline">
+        <div className="mt-5 text-center text-neutral-700">
+          <span className="text-neutral-100">Don’t have an account? </span>
+          <Link to="/register" className="font-medium text-blue-100 underline-offset-2 hover:underline">
             Register
           </Link>
         </div>

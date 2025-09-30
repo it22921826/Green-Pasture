@@ -1,8 +1,8 @@
-const User = require('../models/User');
-const generateToken = require('../utils/generateToken');
+import User from '../models/User.js';
+import generateToken from '../utils/generateToken.js';
 
 // Register User/Staff/Guest
-exports.register = async (req, res) => {
+export const register = async (req, res) => {
   try {
     const { name, email, password, phone, address, role, preferences, documents } = req.body;
 
@@ -38,7 +38,7 @@ exports.register = async (req, res) => {
 };
 
 // Login
-exports.login = async (req, res) => {
+export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
@@ -67,7 +67,7 @@ exports.login = async (req, res) => {
 };
 
 // Get Profile
-exports.getProfile = async (req, res) => {
+export const getProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user._id).populate('bookingHistory');
     if (!user) {
@@ -80,7 +80,7 @@ exports.getProfile = async (req, res) => {
 };
 
 // Update Profile
-exports.updateProfile = async (req, res) => {
+export const updateProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user._id);
     if (!user) {
@@ -104,7 +104,7 @@ exports.updateProfile = async (req, res) => {
 };
 
 // Admin: Get all users
-exports.getAllUsers = async (req, res) => {
+export const getAllUsers = async (req, res) => {
   try {
     const users = await User.find();
     res.json(users);
@@ -114,7 +114,7 @@ exports.getAllUsers = async (req, res) => {
 };
 
 // Admin: Delete user
-exports.deleteUser = async (req, res) => {
+export const deleteUser = async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
     if (!user) {
@@ -128,7 +128,7 @@ exports.deleteUser = async (req, res) => {
 };
 
 // Delete Guest User
-exports.deleteGuest = async (req, res) => {
+export const deleteGuest = async (req, res) => {
   try {
     console.log('deleteGuest: Route hit');
     console.log('deleteGuest: Requesting user:', req.user && { id: req.user._id?.toString?.(), role: req.user.role });
@@ -164,7 +164,7 @@ exports.deleteGuest = async (req, res) => {
 };
 
 // Change Password
-exports.changePassword = async (req, res) => {
+export const changePassword = async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
 

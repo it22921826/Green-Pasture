@@ -1,6 +1,8 @@
 import Invoice from "../models/invoice.js";
 import nodemailer from "nodemailer";
-import { formatAmount } from "../config/currency.js";
+import { formatCurrency, CURRENCY_SYMBOL } from "../utils/currency.js";
+
+const formatAmount = (amt) => formatCurrency(amt, { withSymbol: true });
 
 const generateInvoiceNumber = async () => {
   while (true) {

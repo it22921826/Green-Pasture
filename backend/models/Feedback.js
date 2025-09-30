@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const FeedbackSchema = new mongoose.Schema(
   {
@@ -13,4 +13,5 @@ const FeedbackSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-module.exports = mongoose.model('Feedback', FeedbackSchema);
+const Feedback = mongoose.model('Feedback', FeedbackSchema);
+export default Feedback;

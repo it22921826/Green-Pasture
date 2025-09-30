@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import logo from "../assets/Logo.png";
@@ -13,6 +13,24 @@ const StaffManagement = () => {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [toast, setToast] = useState("");
+  const [search, setSearch] = useState("");
+  const filteredStaff = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return staffData;
+    return staffData.filter(s => {
+      const name = (s.name || '').toLowerCase();
+      const role = (s.role || '').toLowerCase();
+      const dept = (s.department || '').toLowerCase();
+      const email = (s.email || '').toLowerCase();
+      const phone = (s.phone || '').toLowerCase();
+      const salaryRaw = typeof s.salary === 'number' ? s.salary.toString() : (s.salary || '').toString();
+      const salary = salaryRaw.toLowerCase();
+      const salaryWithPrefix = (`rs${salaryRaw}`).toLowerCase();
+      const joinDate = s.dateOfJoining ? new Date(s.dateOfJoining).toLocaleDateString().toLowerCase() : '';
+      return [name, role, dept, email, phone, salary, salaryWithPrefix, joinDate]
+        .some(field => field.includes(term));
+    });
+  }, [search, staffData]);
   // Removed date-range filter state
 
   useEffect(() => {
@@ -166,17 +184,39 @@ const StaffManagement = () => {
 
   return (
     <div className="mx-auto max-w-5xl p-5">
-      <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-2xl font-semibold text-neutral-900">Staff Management</h1>
-        <button
-          type="button"
-          onClick={handleDownloadReport}
-          disabled={loading || staffData.length === 0}
-          className="rounded-lg bg-[#000B58] px-4 py-2 text-white shadow hover:bg-[#001050] disabled:cursor-not-allowed disabled:opacity-60"
-          title={staffData.length === 0 ? "No staff data to export" : "Download PDF report"}
-        >
-          ⬇️ Download PDF Report
-        </button>
+        <div className="flex flex-1 flex-wrap items-center justify-end gap-3">
+          <div className="relative w-full max-w-sm">
+            <input
+              type="text"
+              value={search}
+              onChange={(e)=>setSearch(e.target.value)}
+              placeholder="Search staff (name, role, dept, email, phone, salary)"
+              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm shadow-sm focus:border-[#000B58] focus:outline-none"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={()=>setSearch("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-neutral-500 hover:text-neutral-700"
+                title="Clear search"
+              >✕</button>
+            )}
+          </div>
+          <div className="text-xs text-neutral-500 self-center">
+            {search ? `${filteredStaff.length} / ${staffData.length} shown` : `${staffData.length} total`}
+          </div>
+          <button
+            type="button"
+            onClick={handleDownloadReport}
+            disabled={loading || staffData.length === 0}
+            className="rounded-lg bg-[#000B58] px-4 py-2 text-white shadow hover:bg-[#001050] disabled:cursor-not-allowed disabled:opacity-60"
+            title={staffData.length === 0 ? "No staff data to export" : "Download PDF report"}
+          >
+            ⬇️ PDF
+          </button>
+        </div>
       </div>
 
       {error && <p className="mb-3 text-center text-red-600">{error}</p>}
@@ -192,8 +232,10 @@ const StaffManagement = () => {
       ) : (
         <div className="rounded-xl border border-neutral-200 p-4 shadow-sm">
           <h2 className="mb-3 text-lg font-semibold">Staff List</h2>
-          {staffData.length > 0 ? (
-            <StaffTable staffData={staffData} onEdit={handleEdit} onDelete={handleDelete} />
+          {filteredStaff.length > 0 ? (
+            <StaffTable staffData={filteredStaff} onEdit={handleEdit} onDelete={handleDelete} />
+          ) : search ? (
+            <p className="text-center text-sm text-neutral-500">No staff match your search.</p>
           ) : (
             <p className="text-center">No staff members found.</p>
           )}

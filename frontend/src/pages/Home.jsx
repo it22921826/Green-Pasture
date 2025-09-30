@@ -35,8 +35,19 @@ const Home = () => {
   const [supportOpen, setSupportOpen] = React.useState(false);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 pb-10">
-      <div className="mx-auto mt-12 max-w-3xl rounded-3xl border border-blue-100/70 bg-white/80 p-11 text-center shadow-2xl backdrop-blur">
+    <div
+      className="relative min-h-screen w-full pb-14"
+      style={{
+        backgroundImage: `url(${hotel})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+        backgroundAttachment: 'fixed'
+      }}
+    >
+      {/* Dark overlay for contrast */}
+      <div className="absolute inset-0 bg-black/45" />
+      <div className="relative mx-auto mt-16 max-w-3xl rounded-3xl border border-white/30 bg-white/70 p-11 text-center shadow-2xl backdrop-blur-xl">
         <h1 className="mb-6 text-4xl font-extrabold tracking-wide text-[#000B58]">
           Welcome to Hotel Management System
         </h1>
@@ -67,12 +78,7 @@ const Home = () => {
           ))}
         </div>
 
-        {/* Main Hotel Image */}
-        <img
-          src={hotel}
-          alt="Five Star Hotel"
-          className="mb-7 w-full rounded-2xl shadow-xl transition-transform duration-300 hover:scale-[1.02]"
-        />
+        {/* Hero image removed (background now fills page) */}
 
         {/* Gallery */}
         <div className="mt-8">
@@ -93,7 +99,7 @@ const Home = () => {
       </div>
 
       {/* Feature Highlights */}
-      <div className="mx-auto mt-12 flex max-w-5xl flex-wrap justify-center gap-9">
+  <div className="relative mx-auto mt-14 flex max-w-5xl flex-wrap justify-center gap-9">
         {features.map((f, i) => (
           <Link key={i} to="/book" className="block">
             <div className="flex min-w-[240px] cursor-pointer flex-col items-center rounded-2xl border border-blue-100 bg-white/90 p-8 text-center shadow-xl transition-transform duration-300 hover:-translate-y-1">
@@ -106,7 +112,7 @@ const Home = () => {
       </div>
 
       {/* Testimonials */}
-      <div className="mx-auto mt-14 max-w-3xl rounded-2xl border border-blue-100 bg-white/90 p-9 shadow-xl">
+  <div className="relative mx-auto mt-16 max-w-3xl rounded-2xl border border-white/30 bg-white/75 p-9 shadow-xl backdrop-blur-xl">
         <h2 className="mb-7 text-center text-2xl font-bold text-[#000B58]">
           What Our Users Say
         </h2>
@@ -129,7 +135,7 @@ const Home = () => {
       </div>
 
       {/* Contact Section */}
-      <div className="mx-auto mt-14 max-w-3xl rounded-2xl border border-blue-100 bg-white/90 p-9 text-center shadow-xl">
+  <div className="relative mx-auto mt-16 max-w-3xl rounded-2xl border border-white/30 bg-white/75 p-9 text-center shadow-xl backdrop-blur-xl">
         <h2 className="mb-4 text-2xl font-bold text-[#000B58]">Contact & Support</h2>
         <p className="mb-3 text-[17px] text-neutral-600">
           Need help or have questions? Reach out to our support team:

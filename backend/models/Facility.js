@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const facilitySchema = new mongoose.Schema({
   name: { type: String, required: true },
@@ -41,4 +41,5 @@ const facilitySchema = new mongoose.Schema({
   totalReviews: { type: Number, default: 0 }
 }, { timestamps: true });
 
-module.exports = mongoose.model('Facility', facilitySchema);
+const Facility = mongoose.model('Facility', facilitySchema);
+export default Facility;

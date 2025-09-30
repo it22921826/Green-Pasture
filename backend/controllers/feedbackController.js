@@ -1,7 +1,7 @@
-const Feedback = require('../models/Feedback');
+import Feedback from '../models/Feedback.js';
 
 // Create feedback (registered users only)
-exports.createFeedback = async (req, res) => {
+export const createFeedback = async (req, res) => {
   try {
     const { rating, comment } = req.body;
     if (!req.user?._id) return res.status(401).json({ message: 'Not authorized' });
@@ -22,7 +22,7 @@ exports.createFeedback = async (req, res) => {
 };
 
 // Get public feedbacks (visible to all users)
-exports.getPublicFeedbacks = async (req, res) => {
+export const getPublicFeedbacks = async (req, res) => {
   try {
     const items = await Feedback.find({ status: 'Published' })
       .sort({ createdAt: -1 })
@@ -36,7 +36,7 @@ exports.getPublicFeedbacks = async (req, res) => {
 };
 
 // Admin: get all feedbacks
-exports.getAllFeedbacks = async (req, res) => {
+export const getAllFeedbacks = async (req, res) => {
   try {
     const items = await Feedback.find()
       .sort({ createdAt: -1 })
@@ -50,7 +50,7 @@ exports.getAllFeedbacks = async (req, res) => {
 };
 
 // Admin: respond to feedback
-exports.respondToFeedback = async (req, res) => {
+export const respondToFeedback = async (req, res) => {
   try {
     const { id } = req.params;
     const { adminResponse } = req.body;

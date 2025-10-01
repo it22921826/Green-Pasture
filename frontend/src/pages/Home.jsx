@@ -43,7 +43,7 @@ const Home = () => {
       <div className="absolute inset-0 bg-black/45" />
       <div className="relative mx-auto mt-16 max-w-3xl rounded-3xl border border-white/30 bg-white/70 p-11 text-center shadow-2xl backdrop-blur-xl">
         <h1 className="mb-6 text-4xl font-extrabold tracking-wide text-[#000B58]">
-          Welcome to Hotel Management System
+          Welcome to GreenPasture Hotels
         </h1>
         <p className="mb-8 text-lg font-medium text-neutral-600">
           Manage bookings, staff, and guests with ease.

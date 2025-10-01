@@ -16,16 +16,46 @@ const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({ name: '', phone: '' });
 
   const navigate = useNavigate();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+    let v = value;
+    if (name === 'name') {
+      // Allow letters + spaces only, strip others
+      v = v.replace(/[^A-Za-z\s]/g, '');
+      if (v.trim().length === 0) {
+        setFieldErrors(fe => ({ ...fe, name: 'Name is required and must contain only letters' }));
+      } else {
+        setFieldErrors(fe => ({ ...fe, name: '' }));
+      }
+    }
+    if (name === 'phone') {
+      // Keep only digits
+      v = v.replace(/\D/g, '');
+      if (!v) {
+        setFieldErrors(fe => ({ ...fe, phone: 'Phone is required' }));
+      } else if (v.length < 9 || v.length > 15) {
+        setFieldErrors(fe => ({ ...fe, phone: 'Phone must be 9-15 digits' }));
+      } else {
+        setFieldErrors(fe => ({ ...fe, phone: '' }));
+      }
+    }
+    setForm(prev => ({ ...prev, [name]: v }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    // Final validation guard
+    const errs = { ...fieldErrors };
+    if (!form.name.trim()) errs.name = 'Name is required';
+    if (form.name && /[^A-Za-z\s]/.test(form.name)) errs.name = 'Name must contain only letters';
+  if (!form.phone) errs.phone = 'Phone is required';
+  else if (form.phone.length < 9 || form.phone.length > 15) errs.phone = 'Phone must be 9-15 digits';
+    setFieldErrors(errs);
+    if (errs.name || errs.phone) return; // abort submit
     setLoading(true);
     setError('');
     try {
@@ -81,8 +111,11 @@ const Register = () => {
               value={form.name}
               onChange={handleChange}
               required
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-[15px] outline-none transition focus:border-blue-500"
+              pattern="[A-Za-z ]+"
+              title="Letters and spaces only"
+              className={`w-full rounded-md border px-3 py-2 text-[15px] outline-none transition focus:border-blue-500 ${fieldErrors.name ? 'border-red-400 focus:border-red-500' : 'border-gray-300'}`}
             />
+            {fieldErrors.name && <p className="mt-1 text-xs text-red-600">{fieldErrors.name}</p>}
           </div>
 
           {/* Email */}
@@ -130,11 +163,16 @@ const Register = () => {
             <input
               name="phone"
               id="phone"
-              placeholder="e.g. +94 77 123 4567"
+              placeholder="Digits only (9-15)"
               value={form.phone}
               onChange={handleChange}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-[15px] outline-none transition focus:border-blue-500"
+              inputMode="numeric"
+              pattern="[0-9]{9,15}"
+              title="Phone must be 9-15 digits"
+              required
+              className={`w-full rounded-md border px-3 py-2 text-[15px] outline-none transition focus:border-blue-500 ${fieldErrors.phone ? 'border-red-400 focus:border-red-500' : 'border-gray-300'}`}
             />
+            {fieldErrors.phone && <p className="mt-1 text-xs text-red-600">{fieldErrors.phone}</p>}
           </div>
 
           {/* Address */}

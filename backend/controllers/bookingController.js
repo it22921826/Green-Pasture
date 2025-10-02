@@ -17,7 +17,7 @@ export const createBooking = async (req, res) => {
       return res.status(400).json({ message: 'Room already booked' });
     }
 
-    // Force status Booked for immediate reflection
+    // Create booking as PendingPayment initially; room remains Available until approval
     const booking = await Booking.create({
       guest: req.user._id,
       roomNumber,
@@ -25,15 +25,10 @@ export const createBooking = async (req, res) => {
       checkOut,
       specialRequests,
       paymentConfirmation: paymentConfirmation || undefined,
-      status: 'Booked'
+      status: 'PendingPayment'
     });
-
-    // Update room status prior to responding
-    room.status = 'Booked';
-    await room.save();
-    const freshRoom = await Room.findById(room._id); // ensure we send latest persisted doc
-    console.log('[createBooking] Booking created and room marked booked:', { bookingId: booking._id, roomNumber });
-    res.status(201).json({ booking, updatedRoom: freshRoom });
+    console.log('[createBooking] Booking created pending approval:', { bookingId: booking._id, roomNumber });
+    res.status(201).json({ booking, updatedRoom: room });
   } catch (error) {
     console.error('[createBooking] Error:', error);
     res.status(500).json({ message: error.message });
@@ -151,9 +146,21 @@ export const setBookingStatus = async (req, res) => {
       return res.status(400).json({ message: 'Cannot modify a cancelled booking' });
     }
 
+    // Sync room status if necessary
+    const room = await Room.findOne({ roomNumber: booking.roomNumber });
     booking.status = target;
     await booking.save();
-    return res.json({ message: 'Status updated', booking });
+    if (room) {
+      if (target === 'Booked') {
+        room.status = 'Booked';
+      } else if (target === 'PendingPayment') {
+        // Only revert to Available if room not booked by another overlapping approved booking (simple check)
+        const anyOtherBooked = await Booking.findOne({ roomNumber: booking.roomNumber, _id: { $ne: booking._id }, status: 'Booked' });
+        if (!anyOtherBooked) room.status = 'Available';
+      }
+      await room.save();
+    }
+    return res.json({ message: 'Status updated', booking, room });
   } catch (error) {
     console.error('[setBookingStatus] Error:', error);
     res.status(500).json({ message: error.message });

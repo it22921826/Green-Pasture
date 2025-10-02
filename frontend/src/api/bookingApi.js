@@ -9,3 +9,5 @@ export const getAllBookings = (token) => axios.get(API_URL, { headers: { Authori
 export const updateBooking = (id, data, token) => axios.put(`${API_URL}/${id}`, data, { headers: { Authorization: `Bearer ${token}` } });
 export const deleteBooking = (id, token) => axios.delete(`${API_URL}/${id}`, { headers: { Authorization: `Bearer ${token}` } });
 export const cancelBooking = (id, token) => axios.patch(`${API_URL}/${id}/cancel`, {}, { headers: { Authorization: `Bearer ${token}` } });
+// Dedicated status update (PATCH /:id/status) expecting body { status: 'Approved' | 'Pending' }
+export const setBookingStatus = (id, uiStatus, token) => axios.patch(`${API_URL}/${id}/status`, { status: uiStatus }, { headers: { Authorization: `Bearer ${token}` } });

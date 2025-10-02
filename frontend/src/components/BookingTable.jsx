@@ -1,11 +1,15 @@
 import React, { useEffect, useState } from "react";
-import { cancelBooking, updateBooking } from "../api/bookingApi";
+import { cancelBooking, setBookingStatus } from "../api/bookingApi";
+import { decodeToken } from "../utils/authHelper";
 
 const BookingTable = ({ bookings: incoming }) => {
   const [rows, setRows] = useState(incoming || []);
   const [filtered, setFiltered] = useState(incoming || []);
   const [actionId, setActionId] = useState("");
   const [search, setSearch] = useState("");
+  const token = localStorage.getItem('token');
+  const user = token ? decodeToken(token) : null;
+  const role = user?.role || user?.user?.role || ''; // handle nested user
 
   useEffect(() => {
     const base = Array.isArray(incoming) ? incoming : [];
@@ -81,45 +85,46 @@ const BookingTable = ({ bookings: incoming }) => {
               <td className="px-5 py-3 text-sm text-neutral-800">{b.roomNumber}</td>
               <td className="px-5 py-3 text-sm text-neutral-800">{b.checkIn && new Date(b.checkIn).toLocaleDateString()}</td>
               <td className="px-5 py-3 text-sm text-neutral-800">{b.checkOut && new Date(b.checkOut).toLocaleDateString()}</td>
-              <td className={`px-5 py-3 text-sm font-semibold ${statusColorClass(b.status)}`}>{b.status}</td>
+              <td className={`px-5 py-3 text-sm font-semibold ${statusColorClass(b.status)}`}>{friendlyStatus(b.status)}</td>
               <td className="px-5 py-3 text-sm text-neutral-800">{b.guest?.name || b.guest}</td>
               <td className="px-5 py-3 text-sm text-neutral-800">{b.staff?.name || b.staff}</td>
               <td className="px-5 py-3 text-sm text-neutral-800">{b.specialRequests || "-"}</td>
               <td className="px-5 py-3 text-sm text-neutral-800">
                 <div className="flex flex-wrap gap-2 items-center">
-                  <div className="relative">
-                    <select
-                      value={mapInternalToUiStatus(b.status)}
-                      onChange={async (e) => {
-                        const uiVal = e.target.value; // 'Approved' | 'Pending' | 'Cancelled'
-                        if (uiVal === 'Cancelled') return; // do not allow direct select of cancelled here
-                        const token = localStorage.getItem('token');
-                        const prev = rows;
-                        const newInternal = uiVal === 'Approved' ? 'Booked' : 'PendingPayment';
-                        setRows(p => p.map(r => r._id === b._id ? { ...r, status: newInternal } : r));
-                        try {
-                          await updateBooking(`${b._id}/status`, { status: uiVal }, token);
-                        } catch (err) {
-                          setRows(prev); // revert
-                          alert(err?.response?.data?.message || err.message || 'Failed to update status');
-                        }
-                      }}
-                      className="rounded border border-neutral-300 bg-white px-2 py-1 text-xs focus:border-[#000B58] focus:outline-none"
-                    >
-                      <option value="Approved">Approve</option>
-                      <option value="Pending">Pending</option>
-                      {b.status === 'Cancelled' && <option value="Cancelled">Cancelled</option>}
-                    </select>
-                  </div>
+                  {role && ['Staff','Admin'].includes(role) && b.status !== 'Cancelled' && (
+                    <div className="relative">
+                      <select
+                        value={mapInternalToUiStatus(b.status)}
+                        onChange={async (e) => {
+                          const uiVal = e.target.value; // 'Approved' | 'Pending'
+                          if (uiVal === 'Cancelled') return;
+                          const prev = rows;
+                          const newInternal = uiVal === 'Approved' ? 'Booked' : 'PendingPayment';
+                          setRows(p => p.map(r => r._id === b._id ? { ...r, status: newInternal } : r));
+                          try {
+                            await setBookingStatus(b._id, uiVal, token);
+                          } catch (err) {
+                            setRows(prev);
+                            alert(err?.response?.data?.message || err.message || 'Failed to update status');
+                          }
+                        }}
+                        className="rounded border border-neutral-300 bg-white px-2 py-1 text-xs focus:border-[#000B58] focus:outline-none"
+                      >
+                        <option value="Approved">Approve</option>
+                        <option value="Pending">Pending</option>
+                        {b.status === 'Cancelled' && <option value="Cancelled">Cancelled</option>}
+                      </select>
+                    </div>
+                  )}
                   <button
-                    type="button"
-                    onClick={() => cancel(b._id)}
-                    disabled={actionId === `cancel:${b._id}` || b.status === "Cancelled"}
-                    className="rounded bg-red-600 px-3 py-1 text-white shadow disabled:cursor-not-allowed disabled:opacity-60 hover:bg-red-700"
-                    title={b.status === "Cancelled" ? "Already cancelled" : "Cancel booking"}
-                  >
-                    {actionId === `cancel:${b._id}` ? "Cancelling..." : "Cancel"}
-                  </button>
+                      type="button"
+                      onClick={() => cancel(b._id)}
+                      disabled={actionId === `cancel:${b._id}` || b.status === "Cancelled"}
+                      className="rounded bg-red-600 px-3 py-1 text-white shadow disabled:cursor-not-allowed disabled:opacity-60 hover:bg-red-700"
+                      title={b.status === "Cancelled" ? "Already cancelled" : "Cancel booking"}
+                    >
+                      {actionId === `cancel:${b._id}` ? "Cancelling..." : "Cancel"}
+                    </button>
                 </div>
               </td>
             </tr>
@@ -131,16 +136,25 @@ const BookingTable = ({ bookings: incoming }) => {
 };
 
 const statusColorClass = (status) => {
-  switch (status) {
-    case "Confirmed":
-      return "text-green-600";
-    case "Pending":
-      return "text-orange-600";
-    case "Cancelled":
-      return "text-red-600";
+  const internal = status;
+  switch (internal) {
+    case 'Booked':
+    case 'Confirmed':
+      return 'text-green-600';
+    case 'PendingPayment':
+    case 'Pending':
+      return 'text-orange-600';
+    case 'Cancelled':
+      return 'text-red-600';
     default:
-      return "text-neutral-700";
+      return 'text-neutral-700';
   }
+};
+
+const friendlyStatus = (status) => {
+  if (status === 'Booked') return 'Approved';
+  if (status === 'PendingPayment') return 'Pending';
+  return status; // Cancelled or already user-friendly
 };
 
 // Map internal statuses to dropdown UI values

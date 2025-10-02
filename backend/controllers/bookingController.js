@@ -1,5 +1,6 @@
 import Booking from '../models/Booking.js';
 import Room from '../models/Room.js';
+import nodemailer from 'nodemailer';
 
 // Create booking (also updates Room status to 'Booked')
 export const createBooking = async (req, res) => {
@@ -159,6 +160,33 @@ export const setBookingStatus = async (req, res) => {
         if (!anyOtherBooked) room.status = 'Available';
       }
       await room.save();
+    }
+    // Send approval email only when transitioning to Booked
+    if (target === 'Booked') {
+      try {
+        const populated = await booking.populate('guest', 'name email');
+        if (populated.guest?.email) {
+          const transporter = nodemailer.createTransport({
+            service: 'Gmail',
+            auth: { user: process.env.SENDER_EMAIL, pass: process.env.EMAIL_PASSWORD }
+          });
+          await transporter.sendMail({
+            to: populated.guest.email,
+            from: process.env.SENDER_EMAIL,
+            subject: 'Your Room Booking is Approved',
+            html: `<p>Dear ${populated.guest.name || 'Guest'},</p>
+                   <p>Your booking for room <strong>${booking.roomNumber}</strong> has been approved.</p>
+                   <ul>
+                     <li>Check-in: ${new Date(booking.checkIn).toLocaleDateString()}</li>
+                     <li>Check-out: ${new Date(booking.checkOut).toLocaleDateString()}</li>
+                     <li>Status: Booked</li>
+                   </ul>
+                   <p>We look forward to hosting you.</p>`
+          });
+        }
+      } catch (mailErr) {
+        console.error('[setBookingStatus] approval email failed:', mailErr);
+      }
     }
     return res.json({ message: 'Status updated', booking, room });
   } catch (error) {

@@ -22,51 +22,9 @@ const generateInvoiceNumber = async () => {
 export const createInvoice = async (req, res) => {
   try {
     const { customerName, email, amount, roomNo } = req.body;
-
     const invoiceNumber = await generateInvoiceNumber();
-
-    const invoice = await Invoice.create({
-      invoiceNumber,
-      customerName,
-      email,
-      amount,
-      roomNo,
-    });
-
-   
-    if (email) {
-      try {
-        const transporter = nodemailer.createTransport({
-          service: "Gmail",
-          auth: {
-            user: process.env.SENDER_EMAIL,
-            pass: process.env.EMAIL_PASSWORD, 
-          },
-        });
-
-        const mailOptions = {
-          from: process.env.SENDER_EMAIL,
-          to: email,
-          subject: `Invoice ${invoiceNumber} Created`,
-          html: `
-            <h2>Invoice Created</h2>
-            <p>Dear ${customerName},</p>
-            <p>Your invoice has been created successfully.</p>
-            <ul>
-              <li>Invoice Number: ${invoiceNumber}</li>
-              <li>Amount: ${formatAmount(amount)}</li>
-              <li>Room No: ${roomNo ?? "N/A"}</li>
-            </ul>
-          `,
-        };
-
-        await transporter.sendMail(mailOptions);
-        console.log(`Email sent to ${email}`);
-      } catch (mailErr) {
-        console.error("Failed to send email:", mailErr);
-      }
-    }
-
+    const invoice = await Invoice.create({ invoiceNumber, customerName, email, amount, roomNo });
+    // Email intentionally NOT sent here anymore; it's deferred to approval stage.
     res.status(201).json({ success: true, invoice });
   } catch (err) {
     console.error(err);
@@ -97,6 +55,52 @@ export const deleteInvoice = async (req, res) => {
   try {
     await Invoice.findByIdAndDelete(req.params.id);
     res.json({ message: "Invoice deleted" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// PATCH /invoices/:id/approve -> mark invoice as paid/approved
+export const approveInvoice = async (req, res) => {
+  try {
+    const invoice = await Invoice.findById(req.params.id);
+    if (!invoice) return res.status(404).json({ message: 'Invoice not found' });
+    if (invoice.status === 'approved' || invoice.status === 'paid') {
+      return res.json({ message: 'Invoice already approved', invoice });
+    }
+    invoice.status = 'approved';
+    invoice.amountPaid = invoice.amount; // assume full payment on approval
+    invoice.paidAt = new Date();
+    await invoice.save();
+    // Send approval email
+    if (invoice.email) {
+      try {
+        const transporter = nodemailer.createTransport({
+          service: 'Gmail',
+          auth: { user: process.env.SENDER_EMAIL, pass: process.env.EMAIL_PASSWORD }
+        });
+        await transporter.sendMail({
+          from: process.env.SENDER_EMAIL,
+          to: invoice.email,
+          subject: `Invoice ${invoice.invoiceNumber} Approved`,
+          html: `
+            <h2>Invoice Approved</h2>
+            <p>Dear ${invoice.customerName},</p>
+            <p>Your payment has been approved. Here are the details:</p>
+            <ul>
+              <li>Invoice Number: ${invoice.invoiceNumber}</li>
+              <li>Amount: ${formatAmount(invoice.amount)}</li>
+              <li>Status: Approved</li>
+              <li>Approved At: ${invoice.paidAt.toLocaleString()}</li>
+            </ul>
+            <p>Thank you for choosing our hotel.</p>
+          `
+        });
+      } catch (mailErr) {
+        console.error('[approveInvoice] Email send failed:', mailErr);
+      }
+    }
+    res.json({ message: 'Invoice approved', invoice });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

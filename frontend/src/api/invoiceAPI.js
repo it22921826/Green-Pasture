@@ -40,3 +40,8 @@ export const deleteInvoice = async (id) => {
   const res = await axios.delete(`/invoices/${id}`);
   return res.data;
 };
+
+export const approveInvoice = async (id) => {
+  const res = await axios.patch(`/invoices/${id}/approve`);
+  return res.data;
+};

@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import Facility from '../models/Facility.js';
 import FacilityBooking from '../models/FacilityBooking.js';
+import nodemailer from 'nodemailer';
 
 // Get all facilities
 export const getAllFacilities = async (req, res) => {
@@ -349,6 +350,31 @@ export const markFacilityBookingPaid = async (req, res) => {
     booking.paymentStatus = 'Paid';
     if (req.body.paymentConfirmation) booking.paymentConfirmation = req.body.paymentConfirmation;
     await booking.save();
+    // Send confirmation email on approval/payment
+    try {
+      const populated = await booking.populate('guest facility', 'name email facility');
+      if (populated.guest?.email) {
+        const transporter = nodemailer.createTransport({
+          service: 'Gmail',
+          auth: { user: process.env.SENDER_EMAIL, pass: process.env.EMAIL_PASSWORD }
+        });
+        await transporter.sendMail({
+          to: populated.guest.email,
+          from: process.env.SENDER_EMAIL,
+          subject: 'Your Facility Booking is Confirmed',
+          html: `<p>Dear ${populated.guest.name || 'Guest'},</p>
+                 <p>Your booking for facility <strong>${populated.facility?.name || 'Facility'}</strong> is confirmed.</p>
+                 <ul>
+                   <li>Check-in: ${new Date(booking.checkIn).toLocaleDateString()}</li>
+                   <li>Check-out: ${new Date(booking.checkOut).toLocaleDateString()}</li>
+                   <li>Status: Confirmed</li>
+                 </ul>
+                 <p>Thank you for choosing our services.</p>`
+        });
+      }
+    } catch (mailErr) {
+      console.error('[markFacilityBookingPaid] email failed:', mailErr);
+    }
     res.json({ currency: 'LKR', symbol: 'Rs.', item: booking });
   } catch (error) {
     res.status(500).json({ message: error.message });

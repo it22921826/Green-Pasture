@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { formatCurrency } from "../utils/currency";
-import { fetchInvoices, deleteInvoice } from "../api/invoiceAPI";
+import { fetchInvoices, deleteInvoice, approveInvoice } from "../api/invoiceAPI";
 import logo from '../assets/Logo.png';
 
 const Invoice = () => {
@@ -32,6 +32,17 @@ const Invoice = () => {
     } catch (err) {
       console.error("Error deleting invoice:", err);
       setError("Failed to delete invoice");
+    }
+  };
+
+  const handleApprove = async (inv) => {
+    try {
+      await approveInvoice(inv._id);
+      // optimistic UI: update local list before reload
+      setInvoices(prev => prev.map(i => i._id === inv._id ? { ...i, status: 'approved', amountPaid: i.amount, paidAt: new Date().toISOString() } : i));
+    } catch (err) {
+      console.error('Error approving invoice:', err);
+      setError('Failed to approve invoice');
     }
   };
 
@@ -138,6 +149,7 @@ const Invoice = () => {
             <th className="px-5 py-3 text-sm font-bold">Customer</th>
             <th className="px-5 py-3 text-sm font-bold">Email</th>
             <th className="px-5 py-3 text-sm font-bold">Amount</th>
+            <th className="px-5 py-3 text-sm font-bold">Status</th>
             <th className="px-5 py-3 text-sm font-bold text-center">Actions</th>
           </tr>
         </thead>
@@ -153,8 +165,21 @@ const Invoice = () => {
               <td className="px-5 py-3 text-sm text-neutral-800">{inv.customerName}</td>
               <td className="px-5 py-3 text-sm text-neutral-800">{inv.email}</td>
               <td className="px-5 py-3 text-sm text-neutral-800">{formatCurrency(inv.amount)}</td>
+              <td className="px-5 py-3 text-sm">
+                {inv.status === 'approved' || inv.status === 'paid' ? (
+                  <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-700">Approved</span>
+                ) : (
+                  <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700">Pending</span>
+                )}
+              </td>
               <td className="px-5 py-3 text-sm text-neutral-800">
                 <div className="flex flex-wrap items-center justify-center gap-2">
+                  {!(inv.status === 'approved' || inv.status === 'paid') && (
+                    <button
+                      onClick={() => handleApprove(inv)}
+                      className="rounded bg-blue-600 px-3 py-1 text-white shadow hover:bg-blue-700"
+                    >Approve</button>
+                  )}
                   <button
                     onClick={() => downloadSingle(inv)}
                     className="rounded bg-green-600 px-3 py-1 text-white shadow hover:bg-green-700"

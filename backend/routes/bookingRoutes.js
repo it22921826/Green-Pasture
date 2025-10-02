@@ -8,6 +8,7 @@ router.post('/', protect, authorizeRoles('Guest', 'Staff', 'Admin'), bookingCont
 router.get('/my', protect, authorizeRoles('Guest'), bookingController.getMyBookings);
 router.get('/', protect, authorizeRoles('Staff', 'Admin'), bookingController.getAllBookings);
 router.put('/:id', protect, authorizeRoles('Staff', 'Admin'), bookingController.updateBooking);
+router.patch('/:id/status', protect, authorizeRoles('Staff','Admin'), bookingController.setBookingStatus);
 router.delete('/:id', protect, authorizeRoles('Staff', 'Admin'), bookingController.deleteBooking);
 router.post('/:id/mark-paid', protect, authorizeRoles('Staff','Admin'), bookingController.markBookingPaid);
 // Dedicated cancel route to ensure room is freed correctly

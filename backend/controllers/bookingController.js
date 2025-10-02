@@ -134,3 +134,28 @@ export const cancelBooking = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+// Staff/Admin: set booking status to 'Booked' (Approve) or 'PendingPayment' (Pending)
+export const setBookingStatus = async (req, res) => {
+  try {
+    const { status } = req.body; // expected: 'Approved'|'Pending'
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    let target;
+    if (status === 'Approved') target = 'Booked';
+    else if (status === 'Pending') target = 'PendingPayment';
+    else return res.status(400).json({ message: 'Invalid status. Use Approved or Pending.' });
+
+    // If changing from Cancelled, disallow
+    if (booking.status === 'Cancelled') {
+      return res.status(400).json({ message: 'Cannot modify a cancelled booking' });
+    }
+
+    booking.status = target;
+    await booking.save();
+    return res.json({ message: 'Status updated', booking });
+  } catch (error) {
+    console.error('[setBookingStatus] Error:', error);
+    res.status(500).json({ message: error.message });
+  }
+};

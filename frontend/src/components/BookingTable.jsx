@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { cancelBooking } from "../api/bookingApi";
+import { cancelBooking, updateBooking } from "../api/bookingApi";
 
 const BookingTable = ({ bookings: incoming }) => {
   const [rows, setRows] = useState(incoming || []);
@@ -86,7 +86,31 @@ const BookingTable = ({ bookings: incoming }) => {
               <td className="px-5 py-3 text-sm text-neutral-800">{b.staff?.name || b.staff}</td>
               <td className="px-5 py-3 text-sm text-neutral-800">{b.specialRequests || "-"}</td>
               <td className="px-5 py-3 text-sm text-neutral-800">
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2 items-center">
+                  <div className="relative">
+                    <select
+                      value={mapInternalToUiStatus(b.status)}
+                      onChange={async (e) => {
+                        const uiVal = e.target.value; // 'Approved' | 'Pending' | 'Cancelled'
+                        if (uiVal === 'Cancelled') return; // do not allow direct select of cancelled here
+                        const token = localStorage.getItem('token');
+                        const prev = rows;
+                        const newInternal = uiVal === 'Approved' ? 'Booked' : 'PendingPayment';
+                        setRows(p => p.map(r => r._id === b._id ? { ...r, status: newInternal } : r));
+                        try {
+                          await updateBooking(`${b._id}/status`, { status: uiVal }, token);
+                        } catch (err) {
+                          setRows(prev); // revert
+                          alert(err?.response?.data?.message || err.message || 'Failed to update status');
+                        }
+                      }}
+                      className="rounded border border-neutral-300 bg-white px-2 py-1 text-xs focus:border-[#000B58] focus:outline-none"
+                    >
+                      <option value="Approved">Approve</option>
+                      <option value="Pending">Pending</option>
+                      {b.status === 'Cancelled' && <option value="Cancelled">Cancelled</option>}
+                    </select>
+                  </div>
                   <button
                     type="button"
                     onClick={() => cancel(b._id)}
@@ -117,6 +141,14 @@ const statusColorClass = (status) => {
     default:
       return "text-neutral-700";
   }
+};
+
+// Map internal statuses to dropdown UI values
+const mapInternalToUiStatus = (status) => {
+  if (status === 'Booked' || status === 'Confirmed') return 'Approved';
+  if (status === 'PendingPayment' || status === 'Pending') return 'Pending';
+  if (status === 'Cancelled') return 'Cancelled';
+  return 'Pending';
 };
 
 export default BookingTable;

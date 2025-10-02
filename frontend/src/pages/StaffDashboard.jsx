@@ -136,6 +136,14 @@ const StaffDashboard = () => {
           >
             Invoices
           </button>
+          {/* Direct Facilities management navigation */}
+          <button
+            onClick={() => window.location.href = '/facility-booking'}
+            className="rounded px-4 py-2 text-sm font-medium shadow bg-emerald-600 text-white hover:bg-emerald-700"
+            title="Go to Facilities Management"
+          >
+            Manage Facilities
+          </button>
         </div>
         {error && (
           <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-center text-sm text-red-700">{error}</div>

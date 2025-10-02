@@ -89,25 +89,23 @@ const Navbar = () => {
   // Menu items based on user role
   const getMenuItems = () => {
     if (!user) return [];
-    
-    switch (user.role) {
+    const role = user.role;
+    switch (role) {
       case 'Admin':
         return [
-          { to: '/dashboard', label: 'Dashboard', icon: '�' },
-          { to: '/facility-booking', label: 'Facilities', icon: '🏨' },
+          { to: '/dashboard', label: 'Dashboard', icon: '📊' },
           { to: '/staff-management', label: 'Staff', icon: '👥' },
         ];
       case 'Staff':
         return [
           { to: '/dashboard', label: 'Dashboard', icon: '📊' },
-          // Facilities link removed for Staff per request
           { to: '/staff-management', label: 'Staff', icon: '👥' },
         ];
-          case 'User': // Normalize 'User' as regular guest
-            return [
-              { to: '/my-bookings', label: 'Bookings', icon: '📄' },
-              { to: '/facility-booking', label: 'Facilities', icon: '🏨' },
-            ];
+      case 'User':
+        return [
+          { to: '/my-bookings', label: 'Bookings', icon: '📄' },
+          { to: '/facility-booking', label: 'Facilities', icon: '🏨' },
+        ];
       case 'Guest':
       default:
         return [
@@ -280,7 +278,7 @@ const Navbar = () => {
             </div>
           )}
 
-          {/* Theme toggle */}
+          {/* Theme toggle (shown for all roles including Staff/Admin) */}
           <button
             onClick={toggleTheme}
             className={`text-2xl cursor-pointer p-2 rounded-xl shadow transition-transform hover:scale-110 

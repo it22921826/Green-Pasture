@@ -31,7 +31,8 @@ router.post('/bookings/:id/mark-paid', protect, markFacilityBookingPaid);
 router.get('/', getAllFacilities); // Public route to view facilities
 router.post('/', protect, authorizeRoles('Admin', 'Staff'), createFacility);
 router.put('/:id', protect, authorizeRoles('Admin', 'Staff'), updateFacility);
-router.delete('/:id', protect, authorizeRoles('Admin'), deleteFacility);
+// Allow both Admin and Staff to delete facilities (previously Admin-only)
+router.delete('/:id', protect, authorizeRoles('Admin', 'Staff'), deleteFacility);
 router.get('/:id', getFacilityById); // Keep this last to avoid shadowing
 
 export default router;

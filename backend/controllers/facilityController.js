@@ -61,7 +61,7 @@ export const updateFacility = async (req, res) => {
   }
 };
 
-// Delete facility (Admin only)
+// Delete facility (Admin or Staff)
 export const deleteFacility = async (req, res) => {
   try {
     const facility = await Facility.findById(req.params.id);

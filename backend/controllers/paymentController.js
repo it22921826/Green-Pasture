@@ -25,7 +25,7 @@ export const submitManualPayment = async (req, res) => {
       console.warn('[payment] failed to encode file, will fallback to filename reference', e.message);
     }
 
-    // 1. Create a new invoice (simple incremental number)
+    // Create a new invoice (simple incremental number)
     const last = await Invoice.findOne().sort({ createdAt: -1 });
     const nextNum = (() => {
       const lastNumber = parseInt((last?.invoiceNumber || 'INV000').replace('INV',''), 10) || 0;
@@ -33,7 +33,7 @@ export const submitManualPayment = async (req, res) => {
     })();
     const invoice = await Invoice.create({ invoiceNumber: nextNum, customerName, email, amount, status: 'pending' });
 
-    // 2. Save payment to DB
+    // Save payment to DB
     const payment = await Payment.create({
       customerName,
       amount,

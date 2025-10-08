@@ -18,7 +18,7 @@ const __dirname = path.dirname(__filename);
 // Serve static uploads
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Import routes (CommonJS route files will still work via default import if they use module.exports)
+// Import routes 
 import bookingRoutes from './routes/bookingRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import staffRoutes from './routes/staffRoutes.js';
@@ -40,7 +40,7 @@ app.use('/api/rooms', roomRoutes); // Register room routes
 app.use('/api', paymentRoutes); // Register payment routes (provides /api/payments/manual)
 app.use('/api', invoiceRoutes); // Register invoice routes for /api/invoices
 
-// Simple SSE (optional – can be extended later)
+// Simple SSE 
 const sseClients = new Set();
 app.get('/api/events', (req, res) => {
   res.setHeader('Content-Type', 'text/event-stream');

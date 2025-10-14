@@ -26,6 +26,7 @@ const FacilityCreateForm = ({ onCreated, onUpdated }) => {
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState('');
   const [editId, setEditId] = useState(null);
+  const [images, setImages] = useState([]); // base64 or URL strings
 
   // Listen for edit requests dispatched from table
   useEffect(() => {
@@ -43,6 +44,7 @@ const FacilityCreateForm = ({ onCreated, onUpdated }) => {
         amenities: Array.isArray(f.amenities) ? f.amenities.join(', ') : (f.amenities || ''),
         isAvailable: f.isAvailable !== undefined ? f.isAvailable : true
       });
+      setImages(Array.isArray(f.images) ? f.images.slice(0,5) : []);
       setMessage('Editing facility – make changes and Save');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     };
@@ -80,7 +82,8 @@ const FacilityCreateForm = ({ onCreated, onUpdated }) => {
         maxGuests: Number(form.maxGuests),
         description: form.description.trim() || undefined,
         amenities: form.amenities ? form.amenities.split(',').map(a=>a.trim()).filter(Boolean) : [],
-        isAvailable: form.isAvailable
+        isAvailable: form.isAvailable,
+        images: images.slice(0,5)
       };
       if (editId) {
         const updated = await updateFacility(editId, payload, token);
@@ -93,11 +96,46 @@ const FacilityCreateForm = ({ onCreated, onUpdated }) => {
       }
       setEditId(null);
       setForm({ name:'', type:'Conference Hall', location:'', pricePerNight:'', maxGuests:2, description:'', amenities:'', isAvailable:true });
+      setImages([]);
     } catch (err) {
       setMessage(err.message || 'Create failed');
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const onFilesSelected = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    const maxFiles = 5;
+    const remaining = maxFiles - images.length;
+    if (remaining <= 0) { setMessage('You can upload up to 5 images'); return; }
+    const toRead = files.slice(0, remaining);
+    const acceptedTypes = ['image/jpeg','image/png','image/webp','image/jpg'];
+    const maxSize = 2 * 1024 * 1024; // 2MB
+    const readAsDataURL = (file) => new Promise((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(fr.result);
+      fr.onerror = reject;
+      fr.readAsDataURL(file);
+    });
+    const next = [];
+    for (const file of toRead) {
+      if (!acceptedTypes.includes(file.type)) { setMessage('Only JPG, PNG, WEBP images allowed'); continue; }
+      if (file.size > maxSize) { setMessage('Each image must be 2MB or less'); continue; }
+      try {
+        const dataUrl = await readAsDataURL(file);
+        next.push(String(dataUrl));
+      } catch {
+        setMessage('Failed to read one of the images');
+      }
+    }
+    if (next.length) setImages(prev => [...prev, ...next].slice(0, maxFiles));
+    e.target.value = '';
+  };
+
+  const removeImageAt = (idx) => {
+    setImages(prev => prev.filter((_, i) => i !== idx));
   };
 
   return (
@@ -138,6 +176,22 @@ const FacilityCreateForm = ({ onCreated, onUpdated }) => {
           <label className="block text-sm font-medium mb-1">Max Guests</label>
             <input name="maxGuests" type="number" min="1" value={form.maxGuests} onChange={handleChange} className={`w-full rounded border px-3 py-2 text-sm ${errors.maxGuests ? 'border-red-400' : 'border-gray-300'}`} />
             {errors.maxGuests && <p className="text-xs text-red-600 mt-1">{errors.maxGuests}</p>}
+        </div>
+        {/* Images upload */}
+        <div className="col-span-2">
+          <label className="block text-sm font-medium mb-1">Images</label>
+          <input type="file" accept="image/*" multiple onChange={onFilesSelected} className="block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-[#000B58] file:text-white hover:file:bg-[#001050]" />
+          <p className="text-xs text-neutral-600 mt-1">Up to 5 images. JPG, PNG, or WEBP. Max 2MB each.</p>
+          {images.length > 0 && (
+            <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+              {images.map((src, idx) => (
+                <div key={idx} className="relative group border rounded overflow-hidden">
+                  <img src={src} alt={`Facility ${idx+1}`} className="w-full h-24 object-cover" />
+                  <button type="button" onClick={() => removeImageAt(idx)} className="absolute top-1 right-1 bg-white/90 text-xs px-1.5 py-0.5 rounded shadow hover:bg-white">Remove</button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
         <div className="col-span-2">
           <label className="block text-sm font-medium mb-1">Amenities (comma separated)</label>

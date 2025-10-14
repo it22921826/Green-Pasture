@@ -40,7 +40,14 @@ export const getFacilityById = async (req, res) => {
 // Create facility (Admin/Staff only)
 export const createFacility = async (req, res) => {
   try {
-    const facility = await Facility.create(req.body);
+    const body = { ...req.body };
+    // Sanitize images: allow up to 5 strings (urls or data urls) and cap length
+    if (Array.isArray(body.images)) {
+      body.images = body.images
+        .filter((x) => typeof x === 'string' && x.length > 0)
+        .slice(0, 5);
+    }
+    const facility = await Facility.create(body);
   res.status(201).json({ currency: 'LKR', symbol: 'Rs.', item: facility });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -54,7 +61,13 @@ export const updateFacility = async (req, res) => {
     if (!facility) {
       return res.status(404).json({ message: 'Facility not found' });
     }
-    Object.assign(facility, req.body);
+    const body = { ...req.body };
+    if (Array.isArray(body.images)) {
+      body.images = body.images
+        .filter((x) => typeof x === 'string' && x.length > 0)
+        .slice(0, 5);
+    }
+    Object.assign(facility, body);
     await facility.save();
   res.json({ currency: 'LKR', symbol: 'Rs.', item: facility });
   } catch (error) {

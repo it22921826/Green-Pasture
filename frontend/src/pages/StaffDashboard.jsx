@@ -7,6 +7,7 @@ import { getAllBookings } from '../api/bookingApi';
 import BookingTable from '../components/BookingTable';
 import FacilityBookingTable from '../components/FacilityBookingTable';
 import Invoice from '../components/Invoice';
+import UsersTable from '../components/UsersTable';
 import { getRooms, createRoom, updateRoom, deleteRoom } from '../api/roomApi';
 
 const StaffDashboard = () => {
@@ -18,7 +19,7 @@ const StaffDashboard = () => {
   const [roomForm, setRoomForm] = useState({ roomNumber: '', type: 'Single', price: '', amenities: '', status: 'Available', photos: [], description: '', capacity: 2 });
   const [removePhotos, setRemovePhotos] = useState([]);
   const [editingRoom, setEditingRoom] = useState(null);
-  const [activeTab, setActiveTab] = useState('bookings'); // 'bookings' | 'facility' | 'rooms' | 'invoices'
+  const [activeTab, setActiveTab] = useState('bookings'); // 'bookings' | 'facility' | 'rooms' | 'invoices' | 'users'
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -136,10 +137,17 @@ const StaffDashboard = () => {
           >
             Invoices
           </button>
+          <button
+            onClick={() => setActiveTab('users')}
+            className={`rounded px-4 py-2 text-sm font-medium shadow ${activeTab === 'users' ? 'bg-[#000B58] text-white' : 'bg-neutral-100 text-neutral-800 hover:bg-neutral-200'}`}
+            title="View users"
+          >
+            Users
+          </button>
           {/* Direct Facilities management navigation */}
           <button
             onClick={() => window.location.href = '/facility-booking'}
-            className="rounded px-4 py-2 text-sm font-medium shadow bg-emerald-600 text-white hover:bg-emerald-700"
+            className="rounded px-4 py-2 text-sm font-medium shadow bg-neutral-100 text-neutral-800 hover:bg-neutral-200"
             title="Go to Facilities Management"
           >
             Manage Facilities
@@ -187,6 +195,15 @@ const StaffDashboard = () => {
             <h3 className="mb-4 text-xl font-semibold text-neutral-900">Manage Invoices</h3>
             <div className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm">
               <Invoice />
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'users' && (
+          <div className="mt-10">
+            <h3 className="mb-4 text-xl font-semibold text-neutral-900">Users</h3>
+            <div className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm">
+              <UsersTable />
             </div>
           </div>
         )}

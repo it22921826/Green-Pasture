@@ -106,7 +106,8 @@ export const updateProfile = async (req, res) => {
 // Admin: Get all users
 export const getAllUsers = async (req, res) => {
   try {
-    const users = await User.find();
+    const users = await User.find().select('-password');
+    console.log(`getAllUsers: by ${req.user?.email || req.user?._id} role=${req.user?.role} count=${users.length}`);
     res.json(users);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -116,11 +117,27 @@ export const getAllUsers = async (req, res) => {
 // Admin: Delete user
 export const deleteUser = async (req, res) => {
   try {
-    const user = await User.findById(req.params.id);
-    if (!user) {
+    const target = await User.findById(req.params.id);
+    if (!target) {
       return res.status(404).json({ message: 'User not found' });
     }
-    await user.remove();
+
+    // Safety: disallow deleting own account through this endpoint
+    if (target._id.toString() === req.user._id.toString()) {
+      return res.status(400).json({ message: 'You cannot delete your own account via this endpoint' });
+    }
+
+    const requesterRole = (req.user.role || '').toLowerCase();
+    const targetRole = (target.role || '').toLowerCase();
+
+    // Staff can only delete non-staff, non-admin users
+    if (requesterRole === 'staff') {
+      if (targetRole === 'admin' || targetRole === 'staff') {
+        return res.status(403).json({ message: 'Staff cannot delete Admin or Staff users' });
+      }
+    }
+
+    await target.deleteOne();
     res.json({ message: 'User deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: error.message });

@@ -14,9 +14,11 @@ router.put('/profile', protect, userController.updateProfile);
 router.put('/change-password', protect, userController.changePassword);
 
 // Admin routes
-router.get('/', protect, authorizeRoles('Admin'), userController.getAllUsers);
+// Allow Admin and Staff to view all users
+router.get('/', protect, authorizeRoles('Admin', 'Staff'), userController.getAllUsers);
 // Place specific route before generic "/:id" to avoid any accidental shadowing
 router.delete('/delete-guest/:id', protect, userController.deleteGuest);
-router.delete('/:id', protect, authorizeRoles('Admin'), userController.deleteUser);
+// Allow Admin and Staff to delete users (controller enforces stricter rules for Staff)
+router.delete('/:id', protect, authorizeRoles('Admin', 'Staff'), userController.deleteUser);
 
 export default router;

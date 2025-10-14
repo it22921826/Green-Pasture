@@ -34,6 +34,8 @@ const FacilityBooking = () => {
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
+  // Filters for user-facing facilities list
+  const [facilityFilters, setFacilityFilters] = useState({ type: '', location: '', minPrice: '', maxPrice: '' });
 
   useEffect(() => {
     calculatePricing();
@@ -64,10 +66,7 @@ const FacilityBooking = () => {
             return ai - bi;
           });
           setFacilities(list);
-          // Auto-select first facility if none chosen yet
-          if (!selectedFacility && list.length > 0) {
-            setSelectedFacility(list[0]._id);
-          }
+          // Do not auto-select a facility; open the booking modal only when user clicks
         }
       } catch (err) {
         if (!ignore) setError(err.message || 'Failed to load facilities');
@@ -77,6 +76,24 @@ const FacilityBooking = () => {
     })();
     return () => { ignore = true; };
   }, []);
+
+  const fetchFacilitiesWithFilters = async (e) => {
+    if (e) e.preventDefault();
+    try {
+      setLoadingFacilities(true);
+      const data = await getAllFacilities({
+        type: facilityFilters.type,
+        location: facilityFilters.location,
+        minPrice: facilityFilters.minPrice,
+        maxPrice: facilityFilters.maxPrice,
+      });
+      setFacilities(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setError(err.message || 'Failed to apply filters');
+    } finally {
+      setLoadingFacilities(false);
+    }
+  };
   const calculatePricing = () => {
     if (!selectedFacility || !form.checkIn || !form.checkOut) {
       setPricing({ totalNights: 0, pricePerNight: 0, totalAmount: 0, discountAmount: 0, finalAmount: 0 });
@@ -345,266 +362,160 @@ const FacilityBooking = () => {
             </div>
           )}
         </div>
-  {!(role && ['Admin','Staff'].includes(role)) && (
-  <div className="bg-white rounded-3xl shadow-lg overflow-hidden">
-          {/* Header */}
-          <div className="bg-gradient-to-r from-[#000B58] to-[#001050] px-8 py-6">
-            <h1 className="text-3xl font-bold text-white text-center">
-              Book Your Facility
-            </h1>
-          </div>
+        {/* User-facing facilities list & booking modal */}
+        {!(role && ['Admin','Staff'].includes(role)) && (
+          <div className="bg-white rounded-3xl shadow-lg overflow-hidden">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-[#000B58] to-[#001050] px-8 py-6">
+              <h1 className="text-3xl font-bold text-white text-center">All Facilities</h1>
+              <p className="text-white/80 text-center mt-1">Browse facilities and book instantly.</p>
+            </div>
 
-          <div className="p-8">
-            {error && (
-              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-center">
-                {error}
-              </div>
-            )}
-            {success && (
-              <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg text-green-700 text-center">
-                {success}
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Facility Selection */}
-              <div>
-                <label className="block text-lg font-medium text-gray-700 mb-2">
-                  Select Facility
-                </label>
-                {loadingFacilities ? (
-                  <div className="text-gray-600">Loading facilities...</div>
-                ) : facilities.length === 0 ? (
-                  <div className="text-red-600">
-                    No facilities available to book. Please contact staff/admin to add facilities.
-                  </div>
-                ) : (
-                  <select
-                    value={selectedFacility}
-                    onChange={(e) => setSelectedFacility(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-gray-700 text-lg focus:ring-2 focus:ring-[#000B58] focus:border-transparent"
-                    required
-                  >
-                    {facilities.map((facility) => (
-                      <option key={facility._id} value={facility._id}>
-                        {facility.name}(Rs.{facility.pricePerNight}, Max {facility.maxGuests} guests)
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </div>
-
-              {/* Check-in and Check-out */}
-              <div>
-                <label className="block text-lg font-medium text-gray-700 mb-2">
-                  Check-in - Check-out
-                </label>
-                <div className="grid grid-cols-2 gap-4">
-                  <input
-                    type="date"
-                    name="checkIn"
-                    value={form.checkIn}
-                    onChange={handleChange}
-                    className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#000B58] focus:border-transparent"
-                    required
-                  />
-                  <input
-                    type="date"
-                    name="checkOut"
-                    value={form.checkOut}
-                    onChange={handleChange}
-                    className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#000B58] focus:border-transparent"
-                    required
-                  />
+            <div className="p-8">
+              {/* Filters */}
+              <form onSubmit={fetchFacilitiesWithFilters} className="bg-white rounded-lg border border-neutral-200 p-4 mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
+                <input name="type" value={facilityFilters.type} onChange={(e)=>setFacilityFilters(prev=>({...prev, type:e.target.value}))} placeholder="Type (e.g., Conference Hall)" className="border rounded px-3 py-2" />
+                <input name="location" value={facilityFilters.location} onChange={(e)=>setFacilityFilters(prev=>({...prev, location:e.target.value}))} placeholder="Location" className="border rounded px-3 py-2" />
+                <input name="minPrice" value={facilityFilters.minPrice} onChange={(e)=>setFacilityFilters(prev=>({...prev, minPrice:e.target.value}))} placeholder="Min Price" className="border rounded px-3 py-2" />
+                <input name="maxPrice" value={facilityFilters.maxPrice} onChange={(e)=>setFacilityFilters(prev=>({...prev, maxPrice:e.target.value}))} placeholder="Max Price" className="border rounded px-3 py-2" />
+                <div className="md:col-span-4 flex gap-3">
+                  <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Apply Filters</button>
+                  <button type="button" onClick={()=>{ setFacilityFilters({type:'',location:'',minPrice:'',maxPrice:''}); fetchFacilitiesWithFilters(); }} className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Reset</button>
                 </div>
-              </div>
+              </form>
 
-              {/* Number of Guests */}
-              <div>
-                <label className="block text-lg font-medium text-gray-700 mb-2">
-                  Number of Guests
-                </label>
-                <select
-                  name="numberOfGuests"
-                  value={form.numberOfGuests}
-                  onChange={handleChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-gray-700 text-lg focus:ring-2 focus:ring-[#000B58] focus:border-transparent"
-                  required
-                >
-                  {[5, 10, 15, 20, 25, 30, 50, 75, 100, 150, 200].map(num => (
-                    <option key={num} value={num}>{num} Guest{num > 1 ? 's' : ''}</option>
-                  ))}
-                </select>
-                {selectedFacilityData && (
-                  <p className="mt-1 text-sm text-gray-500">
-                    Maximum capacity: {selectedFacilityData.maxGuests} guests
-                  </p>
-                )}
-              </div>
-
-              {/* Discount Code */}
-              <div>
-                <label className="block text-lg font-medium text-gray-700 mb-2">
-                  Discount Code
-                </label>
-                <input
-                  type="text"
-                  name="discountCode"
-                  value={form.discountCode}
-                  onChange={handleChange}
-                  placeholder="Optional discount code (e.g. HERITAGE10)"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#000B58] focus:border-transparent"
-                />
-              </div>
-
-              {/* Flexible Dates */}
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  name="flexibleDates"
-                  checked={form.flexibleDates}
-                  onChange={handleChange}
-                  className="h-5 w-5 text-[#000B58] focus:ring-[#000B58] border-gray-300 rounded"
-                />
-                <label className="ml-3 text-lg text-gray-700">
-                  Flexible Dates
-                </label>
-              </div>
-
-              {/* Contact Information */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium text-gray-700">Contact Information</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <input
-                      type="text"
-                      name="contactInfo.phone"
-                      value={form.contactInfo.phone}
-                      onChange={handleChange}
-                      placeholder="Phone Number"
-                      inputMode="numeric"
-                      pattern="[0-9]{9,15}"
-                      maxLength={15}
-                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#000B58] focus:border-transparent ${fieldErrors.phone ? 'border-red-400' : 'border-gray-300'}`}
-                      required
-                    />
-                    <p className="mt-1 text-[11px] text-gray-500">Digits only (9-15).</p>
-                    {fieldErrors.phone && <p className="mt-1 text-xs text-red-600">{fieldErrors.phone}</p>}
-                  </div>
-                  <div>
-                    <input
-                      type="email"
-                      name="contactInfo.email"
-                      value={form.contactInfo.email}
-                      onChange={handleChange}
-                      placeholder="Email Address"
-                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#000B58] focus:border-transparent ${fieldErrors.email ? 'border-red-400' : 'border-gray-300'}`}
-                      required
-                    />
-                    {fieldErrors.email && <p className="mt-1 text-xs text-red-600">{fieldErrors.email}</p>}
-                  </div>
-                </div>
-                <div>
-                  <input
-                    type="text"
-                    name="contactInfo.emergencyContact"
-                    value={form.contactInfo.emergencyContact}
-                    onChange={handleChange}
-                    placeholder="Emergency Contact"
-                    inputMode="numeric"
-                    pattern="[0-9]{9,15}"
-                    maxLength={15}
-                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#000B58] focus:border-transparent ${fieldErrors.emergencyContact ? 'border-red-400' : 'border-gray-300'}`}
-                    required
-                  />
-                  <p className="mt-1 text-[11px] text-gray-500">Digits only (9-15).</p>
-                  {fieldErrors.emergencyContact && <p className="mt-1 text-xs text-red-600">{fieldErrors.emergencyContact}</p>}
-                </div>
-              </div>
-
-              {/* Special Requests */}
-              <div>
-                <label className="block text-lg font-medium text-gray-700 mb-2">
-                  Special Requests
-                </label>
-                <textarea
-                  name="specialRequests"
-                  value={form.specialRequests}
-                  onChange={handleChange}
-                  rows={3}
-                  placeholder="Any special requests or requirements..."
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                />
-              </div>
-
-              {/* Pricing Summary */}
-              {pricing.totalNights > 0 && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <h3 className="text-lg font-medium text-[#000B58] mb-2">Booking Summary</h3>
-                  <div className="space-y-1 text-[#000B58]">
-                    <div className="flex justify-between">
-                      <span>{pricing.totalNights} night{pricing.totalNights > 1 ? 's' : ''} × {formatCurrency(pricing.pricePerNight)}</span>
-                      <span>{formatCurrency(pricing.totalAmount)}</span>
-                    </div>
-                    {pricing.discountAmount > 0 && (
-                      <div className="flex justify-between text-green-600">
-                        <span>Discount</span>
-                        <span>-{formatCurrency(pricing.discountAmount)}</span>
+              {loadingFacilities ? (
+                <div className="text-center text-gray-600">Loading facilities...</div>
+              ) : error ? (
+                <div className="text-red-600">{error}</div>
+              ) : facilities.length === 0 ? (
+                <div className="text-center text-neutral-600">No facilities available.</div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  {facilities.map((f) => (
+                    <div key={f._id} className="bg-white rounded-lg border border-neutral-200 shadow hover:shadow-lg transition overflow-hidden">
+                      {/* Image or placeholder */}
+                      {Array.isArray(f.images) && f.images[0] ? (
+                        <img src={f.images[0]} alt={f.name} className="w-full h-36 object-cover" />
+                      ) : (
+                        <div className="w-full h-36 bg-neutral-100 flex items-center justify-center text-neutral-400 text-sm">{f.type || 'Facility'}</div>
+                      )}
+                      <div className="p-4">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-lg font-semibold">{f.name}</h3>
+                          <span className="text-blue-600 font-bold">{formatCurrency(f.pricePerNight || 0)}</span>
+                        </div>
+                        <p className="text-gray-600 text-sm">{f.location || '—'} • Max {f.maxGuests || 0} guests</p>
+                        <div className="mt-3 flex items-center justify-between">
+                          <span className={`inline-block text-xs px-2 py-1 rounded-full ${f.isAvailable ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{f.isAvailable ? 'Available' : 'Unavailable'}</span>
+                          <button
+                            type="button"
+                            className="px-3 py-1.5 text-sm rounded bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-400"
+                            disabled={!f.isAvailable}
+                            onClick={() => { setSelectedFacility(f._id); setError(''); setSuccess(''); }}
+                          >
+                            Book
+                          </button>
+                        </div>
                       </div>
-                    )}
-                    <div className="flex justify-between font-bold text-lg border-t border-blue-300 pt-1">
-                      <span>Total</span>
-                      <span>{formatCurrency(pricing.finalAmount)}</span>
                     </div>
-                  </div>
+                  ))}
                 </div>
               )}
+            </div>
+          </div>
+        )}
 
-              {/* Book Now Button */}
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-[#000B58] hover:bg-[#001050] text-white text-xl font-semibold py-4 px-6 rounded-lg transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? 'BOOKING...' : 'BOOK NOW'}
-              </button>
-            </form>
+        {/* Booking modal for selected facility */}
+        {!(role && ['Admin','Staff'].includes(role)) && selectedFacility && selectedFacilityData && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 overflow-y-auto">
+            <div className="relative w-full max-w-lg max-h-[90vh]">
+              <button onClick={()=>setSelectedFacility('')} className="absolute -top-2 -right-2 z-10 rounded-full bg-white px-3 py-1 text-sm shadow">Close</button>
+              <div className="rounded-xl bg-white shadow-2xl max-h-[85vh] overflow-y-auto">
+                <div className="px-6 pt-6">
+                  <h3 className="text-xl font-semibold text-neutral-800 mb-1">Book: {selectedFacilityData.name}</h3>
+                  <p className="text-sm text-neutral-600 mb-4">{selectedFacilityData.location || ''} • Max {selectedFacilityData.maxGuests} guests • {formatCurrency(selectedFacilityData.pricePerNight || 0)} per night</p>
+                </div>
+                <div className="px-6 pb-6">
+                  {error && (
+                    <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">{error}</div>
+                  )}
+                  {success && (
+                    <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded text-green-700 text-sm">{success}</div>
+                  )}
+                  <form onSubmit={handleSubmit} className="space-y-4">
+                    {/* Check-in and Check-out */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Check-in - Check-out</label>
+                      <div className="grid grid-cols-2 gap-3">
+                        <input type="date" name="checkIn" value={form.checkIn} onChange={handleChange} className={`w-full px-3 py-2 border rounded ${fieldErrors.checkIn ? 'border-red-400' : 'border-gray-300'}`} />
+                        <input type="date" name="checkOut" value={form.checkOut} onChange={handleChange} className={`w-full px-3 py-2 border rounded ${fieldErrors.checkOut ? 'border-red-400' : 'border-gray-300'}`} />
+                      </div>
+                      {(fieldErrors.checkIn || fieldErrors.checkOut) && <p className="text-xs text-red-600 mt-1">{fieldErrors.checkIn || fieldErrors.checkOut}</p>}
+                    </div>
 
-            {/* Facility Benefits */}
-            <div className="mt-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Facility Booking Benefits</h2>
-              <ul className="space-y-3">
-                <li className="flex items-center text-gray-700">
-                  <div className="w-2 h-2 bg-[#000B58] rounded-full mr-3"></div>
-                  Professional event management support
-                </li>
-                <li className="flex items-center text-gray-700">
-                  <div className="w-2 h-2 bg-[#000B58] rounded-full mr-3"></div>
-                  Modern amenities and equipment included
-                </li>
-                <li className="flex items-center text-gray-700">
-                  <div className="w-2 h-2 bg-[#000B58] rounded-full mr-3"></div>
-                  Flexible booking and cancellation policies
-                </li>
-                <li className="flex items-center text-gray-700">
-                  <div className="w-2 h-2 bg-[#000B58] rounded-full mr-3"></div>
-                  Catering and additional services available
-                </li>
-              </ul>
+                    {/* Guests and options */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Guests</label>
+                        <input type="number" name="numberOfGuests" min="1" value={form.numberOfGuests} onChange={handleChange} className="w-full px-3 py-2 border rounded border-gray-300" />
+                      </div>
+                      <div className="flex items-end gap-2">
+                        <input id="flexibleDates" type="checkbox" name="flexibleDates" checked={form.flexibleDates} onChange={handleChange} />
+                        <label htmlFor="flexibleDates" className="text-sm">Flexible Dates</label>
+                      </div>
+                    </div>
 
-              <div className="mt-6 text-center">
-                <div className="flex items-center justify-center">
-                  <div className="w-12 h-12 bg-[#000B58] rounded-full flex items-center justify-center">
-                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                  </div>
+                    {/* Discount code */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Discount Code</label>
+                      <input name="discountCode" value={form.discountCode} onChange={handleChange} className="w-full px-3 py-2 border rounded border-gray-300" placeholder="HERITAGE10 / EARLY20" />
+                    </div>
+
+                    {/* Special requests */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Special Requests</label>
+                      <textarea name="specialRequests" value={form.specialRequests} onChange={handleChange} rows={3} className="w-full px-3 py-2 border rounded border-gray-300" placeholder="Any specific needs?" />
+                    </div>
+
+                    {/* Contact info */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                        <input name="contactInfo.phone" value={form.contactInfo.phone} onChange={handleChange} className={`w-full px-3 py-2 border rounded ${fieldErrors.phone ? 'border-red-400' : 'border-gray-300'}`} />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                        <input name="contactInfo.email" value={form.contactInfo.email} onChange={handleChange} className={`w-full px-3 py-2 border rounded ${fieldErrors.email ? 'border-red-400' : 'border-gray-300'}`} />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Emergency Contact</label>
+                        <input name="contactInfo.emergencyContact" value={form.contactInfo.emergencyContact} onChange={handleChange} className={`w-full px-3 py-2 border rounded ${fieldErrors.emergencyContact ? 'border-red-400' : 'border-gray-300'}`} />
+                      </div>
+                    </div>
+
+                    {/* Pricing summary */}
+                    <div className="rounded border border-neutral-200 p-3 text-sm bg-neutral-50">
+                      <div className="flex justify-between"><span>Nights</span><span>{pricing.totalNights}</span></div>
+                      <div className="flex justify-between"><span>Price/Night</span><span>{formatCurrency(pricing.pricePerNight || 0)}</span></div>
+                      <div className="flex justify-between"><span>Total</span><span>{formatCurrency(pricing.totalAmount || 0)}</span></div>
+                      <div className="flex justify-between"><span>Discount</span><span>-{formatCurrency(pricing.discountAmount || 0)}</span></div>
+                      <div className="flex justify-between font-semibold"><span>Final</span><span>{formatCurrency(pricing.finalAmount || 0)}</span></div>
+                    </div>
+
+                    {/* Submit */}
+                    <div className="pt-1">
+                      <button type="submit" disabled={loading} className="w-full bg-[#000B58] hover:bg-[#001050] text-white text-sm font-semibold px-6 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed">
+                        {loading ? 'Booking...' : 'Book Facility'}
+                      </button>
+                    </div>
+                  </form>
                 </div>
               </div>
             </div>
           </div>
-  </div>
-  )}
+        )}
+        
       </div>
     </div>
   );

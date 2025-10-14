@@ -13,17 +13,52 @@ export const createBooking = async (req, res) => {
       console.warn('[createBooking] Room not found for number:', roomNumber);
       return res.status(404).json({ message: 'Room not found' });
     }
-    if (room.status === 'Booked') {
-      console.warn('[createBooking] Attempt to book already booked room:', roomNumber);
-      return res.status(400).json({ message: 'Room already booked' });
+    // If room is under maintenance, block any booking
+    if (room.status === 'Maintenance') {
+      return res.status(400).json({ message: 'Room is under maintenance' });
+    }
+
+    // Basic date validation
+    const start = new Date(checkIn);
+    const end = new Date(checkOut);
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      return res.status(400).json({ message: 'Invalid check-in or check-out date' });
+    }
+    if (!(start < end)) {
+      return res.status(400).json({ message: 'Check-out must be after check-in' });
+    }
+
+    // Prevent the same user from booking the same room with overlapping dates (including PendingPayment or Booked)
+    const overlappingUserBooking = await Booking.findOne({
+      guest: req.user._id,
+      roomNumber,
+      status: { $in: ['PendingPayment', 'Booked'] },
+      checkIn: { $lt: end },
+      checkOut: { $gt: start },
+    });
+    if (overlappingUserBooking) {
+      return res.status(400).json({
+        message: 'You already have a booking for this room that overlaps the selected dates',
+      });
+    }
+
+    // Optional: prevent overlaps with already Booked reservations by any user
+    const overlappingApproved = await Booking.findOne({
+      roomNumber,
+      status: 'Booked',
+      checkIn: { $lt: end },
+      checkOut: { $gt: start },
+    });
+    if (overlappingApproved) {
+      return res.status(400).json({ message: 'Room is already booked for the selected dates' });
     }
 
     // Create booking as PendingPayment initially; room remains Available until approval
     const booking = await Booking.create({
       guest: req.user._id,
       roomNumber,
-      checkIn,
-      checkOut,
+      checkIn: start,
+      checkOut: end,
       specialRequests,
       paymentConfirmation: paymentConfirmation || undefined,
       status: 'PendingPayment'
@@ -63,7 +98,57 @@ export const updateBooking = async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id);
     if (!booking) return res.status(404).json({ message: 'Booking not found' });
-    Object.assign(booking, req.body);
+
+    // Determine prospective values
+    const newRoomNumber = (typeof req.body.roomNumber === 'string' ? req.body.roomNumber.trim() : (booking.roomNumber || '')).trim();
+    const newCheckIn = req.body.checkIn ? new Date(req.body.checkIn) : new Date(booking.checkIn);
+    const newCheckOut = req.body.checkOut ? new Date(req.body.checkOut) : new Date(booking.checkOut);
+
+    if (isNaN(newCheckIn.getTime()) || isNaN(newCheckOut.getTime())) {
+      return res.status(400).json({ message: 'Invalid check-in or check-out date' });
+    }
+    if (!(newCheckIn < newCheckOut)) {
+      return res.status(400).json({ message: 'Check-out must be after check-in' });
+    }
+
+    // Ensure room exists and not under maintenance if room changed
+    const room = await Room.findOne({ roomNumber: newRoomNumber });
+    if (!room) return res.status(404).json({ message: 'Room not found' });
+    if (room.status === 'Maintenance') {
+      return res.status(400).json({ message: 'Room is under maintenance' });
+    }
+
+    // Prevent self-overlap for same room
+    const overlapSelf = await Booking.findOne({
+      _id: { $ne: booking._id },
+      guest: booking.guest,
+      roomNumber: newRoomNumber,
+      status: { $in: ['PendingPayment', 'Booked'] },
+      checkIn: { $lt: newCheckOut },
+      checkOut: { $gt: newCheckIn },
+    });
+    if (overlapSelf) {
+      return res.status(400).json({ message: 'You already have a booking for this room that overlaps the selected dates' });
+    }
+
+    // Prevent overlap with already approved bookings by any user
+    const overlapApproved = await Booking.findOne({
+      _id: { $ne: booking._id },
+      roomNumber: newRoomNumber,
+      status: 'Booked',
+      checkIn: { $lt: newCheckOut },
+      checkOut: { $gt: newCheckIn },
+    });
+    if (overlapApproved) {
+      return res.status(400).json({ message: 'Room is already booked for the selected dates' });
+    }
+
+    booking.roomNumber = newRoomNumber;
+    booking.checkIn = newCheckIn;
+    booking.checkOut = newCheckOut;
+    if (typeof req.body.specialRequests !== 'undefined') booking.specialRequests = req.body.specialRequests;
+    if (typeof req.body.paymentConfirmation !== 'undefined') booking.paymentConfirmation = req.body.paymentConfirmation;
+    if (typeof req.body.status !== 'undefined') booking.status = req.body.status; // consider restricting externally
     await booking.save();
     res.json(booking);
   } catch (error) {
@@ -117,13 +202,6 @@ export const cancelBooking = async (req, res) => {
 
     booking.status = 'Cancelled';
     await booking.save();
-
-    // Free associated room if currently booked
-    const room = await Room.findOne({ roomNumber: booking.roomNumber });
-    if (room && room.status === 'Booked') {
-      room.status = 'Available';
-      await room.save();
-    }
     res.json({ message: 'Booking cancelled', booking });
   } catch (error) {
     console.error('[cancelBooking] Error:', error);
@@ -147,20 +225,9 @@ export const setBookingStatus = async (req, res) => {
       return res.status(400).json({ message: 'Cannot modify a cancelled booking' });
     }
 
-    // Sync room status if necessary
-    const room = await Room.findOne({ roomNumber: booking.roomNumber });
     booking.status = target;
     await booking.save();
-    if (room) {
-      if (target === 'Booked') {
-        room.status = 'Booked';
-      } else if (target === 'PendingPayment') {
-        // Only revert to Available if room not booked by another overlapping approved booking (simple check)
-        const anyOtherBooked = await Booking.findOne({ roomNumber: booking.roomNumber, _id: { $ne: booking._id }, status: 'Booked' });
-        if (!anyOtherBooked) room.status = 'Available';
-      }
-      await room.save();
-    }
+    // Do not alter Room.status here; availability is determined by date overlaps, not a global flag.
     // Send approval email only when transitioning to Booked
     if (target === 'Booked') {
       try {
@@ -188,7 +255,7 @@ export const setBookingStatus = async (req, res) => {
         console.error('[setBookingStatus] approval email failed:', mailErr);
       }
     }
-    return res.json({ message: 'Status updated', booking, room });
+    return res.json({ message: 'Status updated', booking });
   } catch (error) {
     console.error('[setBookingStatus] Error:', error);
     res.status(500).json({ message: error.message });

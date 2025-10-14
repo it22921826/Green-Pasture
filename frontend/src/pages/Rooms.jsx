@@ -72,7 +72,8 @@ const Rooms = () => {
     const updateFn = (r => {
       const rn = (r.roomNumber || '').trim();
       if (updatedRoom && updatedRoom._id && r._id === updatedRoom._id) return { ...r, status: updatedRoom.status };
-      if (bookedNumber && rn === bookedNumber) return { ...r, status: 'Booked' };
+      // Do not globally flip status to 'Booked'; availability is date-based
+      if (bookedNumber && rn === bookedNumber) return r;
       return r;
     });
     setRooms(prev => prev.map(updateFn));
@@ -148,7 +149,7 @@ const Rooms = () => {
                     <button
                       type="button"
                       className="px-3 py-1.5 text-sm rounded bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-400"
-                      disabled={room.status !== 'Available'}
+                      disabled={room.status === 'Maintenance'}
                       onClick={() => setSelectedRoom(room)}
                     >
                       Book

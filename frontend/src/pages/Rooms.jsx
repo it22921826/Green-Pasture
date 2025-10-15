@@ -1,11 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { formatCurrency } from '../utils/currency';
 import { Link } from 'react-router-dom';
+import { decodeToken } from '../utils/authHelper';
 import BookingForm from './BookingForm';
 import { getRooms } from '../api/roomApi';
 
 const Rooms = () => {
   const [rooms, setRooms] = useState([]);
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  const user = token ? decodeToken(token) : null;
+  const role = (user?.role || user?.user?.role || '').toLowerCase();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [filters, setFilters] = useState({ type: '', status: '', minPrice: '', maxPrice: '' });
@@ -141,19 +145,16 @@ const Rooms = () => {
                       <span className="text-xs text-gray-500">+{room.amenities.length - 3} more</span>
                     )}
                   </div>
-                  <div className="mt-3 flex items-center justify-between">
-                    <span className={`inline-block text-xs px-2 py-1 rounded-full ${
-                      room.status === 'Available' ? 'bg-green-100 text-green-700' :
-                      room.status === 'Booked' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
-                    }`}>{room.status}</span>
-                    <button
-                      type="button"
-                      className="px-3 py-1.5 text-sm rounded bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-400"
-                      disabled={room.status === 'Maintenance'}
-                      onClick={() => setSelectedRoom(room)}
-                    >
-                      Book
-                    </button>
+                  <div className="mt-3 flex items-center justify-end">
+                    {role !== 'staff' && role !== 'admin' && (
+                      <button
+                        type="button"
+                        className="px-3 py-1.5 text-sm rounded bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-400"
+                        onClick={() => setSelectedRoom(room)}
+                      >
+                        Book
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>

@@ -1,19 +1,25 @@
 import React, { useEffect, useState } from "react";
-import { cancelBooking, setBookingStatus } from "../api/bookingApi";
+import { useNavigate } from 'react-router-dom';
+import { cancelBooking, setBookingStatus, deleteBooking } from "../api/bookingApi";
 import { decodeToken } from "../utils/authHelper";
+import RefundForm from './RefundForm';
 
 const BookingTable = ({ bookings: incoming }) => {
   const [rows, setRows] = useState(incoming || []);
   const [filtered, setFiltered] = useState(incoming || []);
   const [actionId, setActionId] = useState("");
   const [search, setSearch] = useState("");
+  const [selected, setSelected] = useState(new Set());
+  const [showRefundFor, setShowRefundFor] = useState(null);
   const token = localStorage.getItem('token');
   const user = token ? decodeToken(token) : null;
   const role = user?.role || user?.user?.role || ''; // handle nested user
+  const navigate = useNavigate();
 
   useEffect(() => {
     const base = Array.isArray(incoming) ? incoming : [];
     setRows(base);
+    setSelected(new Set());
   }, [incoming]);
 
   useEffect(() => {
@@ -32,10 +38,20 @@ const BookingTable = ({ bookings: incoming }) => {
   }, [search, rows]);
 
   const cancel = async (id) => {
+    // Step 1: show refund form BEFORE cancelling; only proceed on submit
+    const booking = rows.find(r => r._id === id);
+    if (!booking) return;
+    setShowRefundFor(booking);
+    // The actual cancellation will be performed in handleRefundSubmit
+  };
+
+  const handleRefundSubmit = async () => {
+    if (!showRefundFor) return;
+    const id = showRefundFor._id;
     const token = localStorage.getItem("token");
     setActionId(`cancel:${id}`);
-    // Optimistic update
     const prev = rows;
+    // Optimistic update after refund form submit
     setRows((p) => p.map(r => r._id === id ? { ...r, status: 'Cancelled' } : r));
     try {
       const { data } = await cancelBooking(id, token);
@@ -52,6 +68,68 @@ const BookingTable = ({ bookings: incoming }) => {
     }
   };
 
+  const remove = async (id) => {
+    if (!window.confirm('Are you sure you want to permanently delete this booking?')) return;
+    const token = localStorage.getItem("token");
+    setActionId(`delete:${id}`);
+    const prev = rows;
+    // Optimistic remove
+    setRows(p => p.filter(r => r._id !== id));
+    try {
+      await deleteBooking(id, token);
+    } catch (err) {
+      setRows(prev);
+      alert(err?.response?.data?.message || err?.message || 'Failed to delete booking');
+    } finally {
+      setActionId('');
+    }
+  };
+
+  const toggleSelect = (id) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    setSelected(prev => {
+      if (prev.size === filtered.length) return new Set();
+      return new Set(filtered.map(b => b._id));
+    });
+  };
+
+  const removeSelected = async () => {
+    if (!role || !['Staff','Admin'].includes(role)) return;
+    const ids = Array.from(selected);
+    if (!ids.length) return alert('No bookings selected');
+    if (!window.confirm(`Delete ${ids.length} selected booking(s)? This cannot be undone.`)) return;
+    const token = localStorage.getItem('token');
+    if (!token) {
+      alert('Please log in as Staff/Admin to delete bookings.');
+      return;
+    }
+    // Optimistic remove
+    const prevRows = rows;
+    setRows(p => p.filter(r => !selected.has(r._id)));
+    setSelected(new Set());
+    // Execute in parallel and handle partial failures
+    const results = await Promise.allSettled(ids.map(id => deleteBooking(id, token)));
+    const failed = results
+      .map((r, i) => ({ r, id: ids[i] }))
+      .filter(x => x.r.status === 'rejected');
+    if (failed.length > 0) {
+      // Restore failed rows
+      const failedIds = new Set(failed.map(f => f.id));
+      const failedRows = prevRows.filter(r => failedIds.has(r._id));
+      setRows(current => [...current, ...failedRows].sort((a,b)=>String(a._id).localeCompare(String(b._id))));
+      const firstErr = failed[0].r.reason;
+      const msg = firstErr?.response?.data?.message || firstErr?.message || 'Some deletions failed';
+      alert(`${failed.length} of ${ids.length} deletion(s) failed: ${msg}`);
+    }
+  };
+
   return (
     <div className="mt-5 overflow-x-auto">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
@@ -62,13 +140,35 @@ const BookingTable = ({ bookings: incoming }) => {
           placeholder="Search bookings (guest, staff, room, status, requests)"
           className="w-full max-w-md rounded border border-neutral-300 px-3 py-2 text-sm shadow-sm focus:border-[#000B58] focus:outline-none"
         />
-        <div className="text-xs text-neutral-500">
-          {search ? `${filtered.length} / ${rows.length} shown` : `${rows.length} total`}
+        <div className="flex items-center gap-3">
+          <div className="text-xs text-neutral-500">
+            {search ? `${filtered.length} / ${rows.length} shown` : `${rows.length} total`}
+          </div>
+          {role && ['Staff','Admin'].includes(role) && (
+            <div className="flex items-center gap-2">
+              <label className="flex items-center gap-1 text-sm">
+                <input type="checkbox" onChange={toggleSelectAll} checked={selected.size>0 && selected.size===filtered.length} />
+                Select All
+              </label>
+              <button
+                type="button"
+                onClick={removeSelected}
+                disabled={selected.size === 0}
+                className="rounded bg-neutral-700 px-3 py-1 text-white shadow disabled:cursor-not-allowed disabled:opacity-60 hover:bg-neutral-800"
+                title="Delete selected bookings"
+              >
+                Delete selected
+              </button>
+            </div>
+          )}
         </div>
       </div>
-      <table className="w-full overflow-hidden rounded-xl border border-neutral-200 bg-white text-left shadow">
+  <table className="w-full overflow-hidden rounded-xl border border-neutral-200 bg-white text-left shadow">
         <thead>
           <tr className="bg-[#000B58] text-white">
+            {role && ['Staff','Admin'].includes(role) && (
+              <th className="px-5 py-3 text-sm font-bold">Select</th>
+            )}
             <th className="px-5 py-3 text-sm font-bold">Room</th>
             <th className="px-5 py-3 text-sm font-bold">Check-In</th>
             <th className="px-5 py-3 text-sm font-bold">Check-Out</th>
@@ -82,6 +182,11 @@ const BookingTable = ({ bookings: incoming }) => {
         <tbody>
           {filtered.map((b, i) => (
             <tr key={b._id} className={i % 2 === 0 ? "bg-neutral-50 hover:bg-blue-50" : "bg-white hover:bg-blue-50"}>
+              {role && ['Staff','Admin'].includes(role) && (
+                <td className="px-5 py-3 text-sm text-neutral-800">
+                  <input type="checkbox" checked={selected.has(b._id)} onChange={() => toggleSelect(b._id)} />
+                </td>
+              )}
               <td className="px-5 py-3 text-sm text-neutral-800">{b.roomNumber}</td>
               <td className="px-5 py-3 text-sm text-neutral-800">{b.checkIn && new Date(b.checkIn).toLocaleDateString()}</td>
               <td className="px-5 py-3 text-sm text-neutral-800">{b.checkOut && new Date(b.checkOut).toLocaleDateString()}</td>
@@ -125,12 +230,27 @@ const BookingTable = ({ bookings: incoming }) => {
                     >
                       {actionId === `cancel:${b._id}` ? "Cancelling..." : "Cancel"}
                     </button>
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/refund-status?bookingId=${b._id}`)}
+                    className="rounded bg-teal-600 px-3 py-1 text-white shadow hover:bg-teal-700"
+                    title="Open refund status"
+                  >
+                    Refund Status
+                  </button>
                 </div>
               </td>
             </tr>
           ))}
         </tbody>
       </table>
+      {showRefundFor && (
+        <RefundForm
+          booking={showRefundFor}
+          onClose={() => setShowRefundFor(null)}
+          onSubmit={handleRefundSubmit}
+        />
+      )}
     </div>
   );
 };

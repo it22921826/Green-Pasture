@@ -1,14 +1,17 @@
 import express from 'express';
-import { createSupportMessage, getAllSupportMessages, updateSupportStatus } from '../controllers/supportController.js';
-import { protect } from '../middlewares/authMiddleware.js';
+import { createSupportMessage, getAllSupportMessages, updateSupportStatus, getMyRefundStatus } from '../controllers/supportController.js';
+import { protect, optionalProtect } from '../middlewares/authMiddleware.js';
 import { authorizeRoles } from '../middlewares/roleMiddleware.js';
 const router = express.Router();
 
-// Public create; if logged in, middleware is optional
-router.post('/', (req, res, next) => next(), createSupportMessage);
+// Public create; attach user if token is provided
+router.post('/', optionalProtect, createSupportMessage);
 
-// Admin endpoints
-router.get('/', protect, authorizeRoles('Admin'), getAllSupportMessages);
-router.put('/:id/status', protect, authorizeRoles('Admin'), updateSupportStatus);
+// Staff/Admin endpoints
+router.get('/', protect, authorizeRoles('Staff', 'Admin'), getAllSupportMessages);
+router.put('/:id/status', protect, authorizeRoles('Staff', 'Admin'), updateSupportStatus);
+
+// Logged-in user: get refund status for a specific booking
+router.get('/my/refund-status/:bookingId', protect, getMyRefundStatus);
 
 export default router;

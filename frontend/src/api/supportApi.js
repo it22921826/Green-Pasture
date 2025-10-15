@@ -18,3 +18,9 @@ export const updateSupportStatus = (id, status, token) => {
     headers: { Authorization: `Bearer ${token}` },
   });
 };
+
+export const getMyRefundStatus = (bookingId, token) => {
+  return axios.get(`${API_URL}/my/refund-status/${bookingId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+};

@@ -159,10 +159,31 @@ export const updateBooking = async (req, res) => {
 // Delete booking
 export const deleteBooking = async (req, res) => {
   try {
-    await Booking.findByIdAndDelete(req.params.id);
-    res.json({ message: 'Booking deleted' });
+    const id = req.params.id;
+    console.log('[deleteBooking] user=', req.user?._id, 'role=', req.user?.role, 'id=', id);
+    const deleted = await Booking.findByIdAndDelete(id);
+    if (!deleted) return res.status(404).json({ message: 'Booking not found' });
+    res.json({ message: 'Booking deleted', id });
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+// Guest: delete own booking by ID (optional policy: allow when not Booked)
+export const deleteMyBooking = async (req, res) => {
+  try {
+    const id = req.params.id;
+    const booking = await Booking.findById(id);
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    if (String(booking.guest) !== String(req.user._id)) {
+      return res.status(403).json({ message: 'Not authorized to delete this booking' });
+    }
+    // Optional policy: disallow deleting Approved bookings; require cancel instead
+    // if (booking.status === 'Booked') return res.status(400).json({ message: 'Cannot delete an approved booking. Please cancel instead.' });
+    await Booking.findByIdAndDelete(id);
+    return res.json({ message: 'Booking deleted', id });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
   }
 };
 

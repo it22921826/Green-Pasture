@@ -7,7 +7,7 @@ const SupportMessageSchema = new mongoose.Schema(
     phone: { type: String, trim: true },
     subject: { type: String, required: true, trim: true },
   message: { type: String, trim: true },
-    status: { type: String, enum: ['Open', 'Resolved'], default: 'Open' },
+  status: { type: String, enum: ['Open', 'Resolved', 'Cancelled'], default: 'Open' },
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   },
   { timestamps: true }

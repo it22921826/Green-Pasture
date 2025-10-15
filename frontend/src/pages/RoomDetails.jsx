@@ -50,7 +50,6 @@ const RoomDetails = () => {
           <div className="bg-white rounded-lg shadow p-4">
             <h2 className="text-xl font-semibold mb-2">Details</h2>
             <div className="space-y-2 text-sm text-gray-700">
-              <div><span className="font-medium">Status:</span> {room.status}</div>
               {room.description && <div><span className="font-medium">Description:</span> {room.description}</div>}
               <div className="mt-2">
                 <span className="font-medium">Amenities:</span>

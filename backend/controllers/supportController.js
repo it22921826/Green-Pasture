@@ -1,4 +1,5 @@
 import SupportMessage from '../models/SupportMessage.js';
+import Booking from '../models/Booking.js';
 
 // Create a support message (public - users may or may not be logged in)
 export const createSupportMessage = async (req, res) => {
@@ -39,8 +40,8 @@ export const getAllSupportMessages = async (req, res) => {
 export const updateSupportStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status } = req.body; // 'Open' or 'Resolved'
-    if (!['Open', 'Resolved'].includes(status)) {
+    const { status } = req.body; // 'Open' | 'Resolved' | 'Cancelled'
+    if (!['Open', 'Resolved', 'Cancelled'].includes(status)) {
       return res.status(400).json({ message: 'Invalid status' });
     }
     const updated = await SupportMessage.findByIdAndUpdate(
@@ -52,6 +53,30 @@ export const updateSupportStatus = async (req, res) => {
     return res.json(updated);
   } catch (err) {
     console.error('updateSupportStatus error:', err);
+    return res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Get refund status for a specific booking for the authenticated user
+export const getMyRefundStatus = async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    if (!bookingId) return res.status(400).json({ message: 'Missing bookingId' });
+
+    // Ensure the booking belongs to the authenticated user
+    const booking = await Booking.findById(bookingId).select('guest');
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    if (!req.user || String(booking.guest) !== String(req.user._id)) {
+      return res.status(403).json({ message: 'Not authorized to view this booking refund status' });
+    }
+
+    const subject = `Refund Request for Booking ${bookingId}`;
+    // Find the most recent support message matching the booking regardless of email/user
+    const item = await SupportMessage.findOne({ subject }).sort({ createdAt: -1 });
+    if (!item) return res.json({ status: 'NotRequested' });
+    return res.json({ status: item.status || 'Open', supportId: item._id, createdAt: item.createdAt });
+  } catch (err) {
+    console.error('getMyRefundStatus error:', err);
     return res.status(500).json({ message: 'Server error' });
   }
 };

@@ -5,6 +5,7 @@ import autoTable from 'jspdf-autotable';
 import { addBrandedHeader, addGeneratedLine } from '../utils/pdfHeader';
 import { getAllBookings } from '../api/bookingApi';
 import BookingTable from '../components/BookingTable';
+import AdminRefunds from '../components/AdminRefunds';
 import FacilityBookingTable from '../components/FacilityBookingTable';
 import Invoice from '../components/Invoice';
 import UsersTable from '../components/UsersTable';
@@ -19,7 +20,7 @@ const StaffDashboard = () => {
   const [roomForm, setRoomForm] = useState({ roomNumber: '', type: 'Single', price: '', amenities: '', status: 'Available', photos: [], description: '', capacity: 2 });
   const [removePhotos, setRemovePhotos] = useState([]);
   const [editingRoom, setEditingRoom] = useState(null);
-  const [activeTab, setActiveTab] = useState('bookings'); // 'bookings' | 'facility' | 'rooms' | 'invoices' | 'users'
+  const [activeTab, setActiveTab] = useState('bookings'); // 'bookings' | 'facility' | 'rooms' | 'invoices' | 'users' | 'refunds'
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -144,6 +145,13 @@ const StaffDashboard = () => {
           >
             Users
           </button>
+          <button
+            onClick={() => setActiveTab('refunds')}
+            className={`rounded px-4 py-2 text-sm font-medium shadow ${activeTab === 'refunds' ? 'bg-[#000B58] text-white' : 'bg-neutral-100 text-neutral-800 hover:bg-neutral-200'}`}
+            title="Manage refund requests"
+          >
+            Refunds
+          </button>
           {/* Direct Facilities management navigation */}
           <button
             onClick={() => window.location.href = '/facility-booking'}
@@ -204,6 +212,16 @@ const StaffDashboard = () => {
             <h3 className="mb-4 text-xl font-semibold text-neutral-900">Users</h3>
             <div className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm">
               <UsersTable />
+            </div>
+          </div>
+        )}
+
+        {/* Refund management for Staff/Admin */}
+        {activeTab === 'refunds' && (
+          <div className="mt-10">
+            <h3 className="mb-4 text-xl font-semibold text-neutral-900">Refund Requests</h3>
+            <div className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm">
+              <AdminRefunds />
             </div>
           </div>
         )}

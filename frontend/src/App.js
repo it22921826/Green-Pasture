@@ -18,6 +18,7 @@ import Feedback from './pages/Feedback';
 import Rooms from './pages/Rooms';
 import RoomDetails from './pages/RoomDetails';
 import GuestPayment from './components/Payment';
+import RefundStatus from './pages/RefundStatus';
 
 function App() {
   return (
@@ -29,7 +30,7 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
   <Route path="/settings" element={<ProtectedRoute roles={["Guest","User","Staff","Admin"]}><Settings /></ProtectedRoute>} />
-  <Route path="/book" element={<ProtectedRoute roles={["Guest","User","Staff","Admin"]}><BookingForm /></ProtectedRoute>} />
+  <Route path="/book" element={<ProtectedRoute roles={["Guest","User"]}><BookingForm /></ProtectedRoute>} />
   <Route path="/facility-booking" element={<ProtectedRoute roles={["Guest","User","Staff","Admin"]}><FacilityBooking /></ProtectedRoute>} />
   <Route path="/my-bookings" element={<ProtectedRoute roles={["Guest","User"]}><MyBookings /></ProtectedRoute>} />
         <Route path="/dashboard" element={<ProtectedRoute roles={["Staff","Admin"]}><StaffDashboard /></ProtectedRoute>} />
@@ -38,6 +39,7 @@ function App() {
         <Route path="/rooms" element={<Rooms />} />
         <Route path="/rooms/:id" element={<RoomDetails />} />
   <Route path="/payment" element={<ProtectedRoute roles={["Guest","User","Staff","Admin"]}><GuestPayment /></ProtectedRoute>} />
+    <Route path="/refund-status" element={<ProtectedRoute roles={["Guest","User"]}><RefundStatus /></ProtectedRoute>} />
       </Routes>
       <FloatingSupport />
       <Footer />

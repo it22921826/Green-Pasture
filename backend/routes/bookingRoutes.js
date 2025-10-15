@@ -4,11 +4,13 @@ import { protect } from '../middlewares/authMiddleware.js';
 import { authorizeRoles } from '../middlewares/roleMiddleware.js';
 const router = express.Router();
 
-router.post('/', protect, authorizeRoles('Guest', 'Staff', 'Admin'), bookingController.createBooking);
+router.post('/', protect, authorizeRoles('Guest'), bookingController.createBooking);
 router.get('/my', protect, authorizeRoles('Guest'), bookingController.getMyBookings);
 router.get('/', protect, authorizeRoles('Staff', 'Admin'), bookingController.getAllBookings);
 router.put('/:id', protect, authorizeRoles('Staff', 'Admin'), bookingController.updateBooking);
 router.patch('/:id/status', protect, authorizeRoles('Staff','Admin'), bookingController.setBookingStatus);
+// Guests can delete their own bookings using a dedicated endpoint
+router.delete('/my/:id', protect, authorizeRoles('Guest'), bookingController.deleteMyBooking);
 router.delete('/:id', protect, authorizeRoles('Staff', 'Admin'), bookingController.deleteBooking);
 router.post('/:id/mark-paid', protect, authorizeRoles('Staff','Admin'), bookingController.markBookingPaid);
 // Dedicated cancel route to ensure room is freed correctly

@@ -2,14 +2,16 @@ import React, { useEffect, useState } from "react";
 import { cancelBooking, setBookingStatus, deleteBooking } from "../api/bookingApi";
 import { decodeToken } from "../utils/authHelper";
 import RefundForm from './RefundForm';
+import BookingForm from "../pages/BookingForm";
 
-const BookingTable = ({ bookings: incoming, showStatusControl = true }) => {
+const BookingTable = ({ bookings: incoming, showStatusControl = true, actionMode = 'cancel' }) => {
   const [rows, setRows] = useState(incoming || []);
   const [filtered, setFiltered] = useState(incoming || []);
   const [actionId, setActionId] = useState("");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(new Set());
   const [showRefundFor, setShowRefundFor] = useState(null);
+  const [showBookingFor, setShowBookingFor] = useState(null);
   const token = localStorage.getItem('token');
   const user = token ? decodeToken(token) : null;
   const role = user?.role || user?.user?.role || ''; // handle nested user
@@ -227,7 +229,17 @@ const BookingTable = ({ bookings: incoming, showStatusControl = true }) => {
                       </select>
                     </div>
                   )}
-                  <button
+                  {actionMode === 'book' ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowBookingFor(b)}
+                      className="rounded bg-blue-600 px-3 py-1 text-white shadow hover:bg-blue-700"
+                      title="Create a new booking for this room"
+                    >
+                      Book
+                    </button>
+                  ) : (
+                    <button
                       type="button"
                       onClick={() => cancel(b._id)}
                       disabled={actionId === `cancel:${b._id}` || b.status === "Cancelled"}
@@ -236,6 +248,7 @@ const BookingTable = ({ bookings: incoming, showStatusControl = true }) => {
                     >
                       {actionId === `cancel:${b._id}` ? "Cancelling..." : "Cancel"}
                     </button>
+                  )}
                   
                 </div>
               </td>
@@ -249,6 +262,24 @@ const BookingTable = ({ bookings: incoming, showStatusControl = true }) => {
           onClose={() => setShowRefundFor(null)}
           onSubmit={handleRefundSubmit}
         />
+      )}
+      {showBookingFor && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="relative w-full max-w-2xl">
+            <button
+              onClick={() => setShowBookingFor(null)}
+              className="absolute -top-2 -right-2 z-10 rounded-full bg-white px-3 py-1 text-sm shadow"
+            >
+              ✕
+            </button>
+            <BookingForm
+              roomNumber={showBookingFor.roomNumber}
+              mode="book"
+              onSuccess={() => setShowBookingFor(null)}
+              embedded
+            />
+          </div>
+        </div>
       )}
     </div>
   );

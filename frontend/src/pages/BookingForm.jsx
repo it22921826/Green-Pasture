@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createBooking } from '../api/bookingApi';
 
-const BookingForm = ({ roomNumber: presetRoomNumber = '', roomPrice = null, mode = 'book', onSuccess }) => {
+const BookingForm = ({ roomNumber: presetRoomNumber = '', roomPrice = null, mode = 'book', onSuccess, embedded = false }) => {
   const [form, setForm] = useState({ roomNumber: presetRoomNumber || '', checkIn: '', checkOut: '', specialRequests: '' });
   const [price] = useState(roomPrice); // snapshot provided
   const [error, setError] = useState('');
@@ -71,8 +71,7 @@ const BookingForm = ({ roomNumber: presetRoomNumber = '', roomPrice = null, mode
     }
   };
 
-  return (
-    <div className="flex min-h-[80vh] items-center justify-center bg-neutral-100">
+  const formCard = (
       <div className="w-full max-w-md rounded-2xl border border-neutral-200 bg-white p-8 shadow-xl">
         <h2 className="mb-6 text-center text-2xl font-semibold text-neutral-900">{isReserve ? 'Create Reservation' : 'Create Booking'}</h2>
         {error && (
@@ -151,7 +150,11 @@ const BookingForm = ({ roomNumber: presetRoomNumber = '', roomPrice = null, mode
           </button>
         </form>
       </div>
-    </div>
+  );
+
+  if (embedded) return formCard;
+  return (
+    <div className="flex min-h-[80vh] items-center justify-center bg-neutral-100">{formCard}</div>
   );
 };
 

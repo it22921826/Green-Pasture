@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { getMyBookings } from '../api/bookingApi';
 import BookingTable from '../components/BookingTable';
 
@@ -20,8 +20,22 @@ const MyBookings = () => {
       });
   }, []);
 
+  const [filter, setFilter] = useState('all'); // 'all' | 'upcoming'
   const totalBookings = bookings.length;
-  const upcomingBookings = bookings.filter(b => new Date(b.date) > new Date()).length;
+  const upcomingCount = useMemo(() => bookings.filter(b => new Date(b.checkIn || b.date) > new Date()).length, [bookings]);
+  const tableRef = useRef(null);
+
+  const filtered = useMemo(() => {
+    if (filter === 'upcoming') {
+      const now = new Date();
+      return bookings.filter(b => new Date(b.checkIn || b.date) > now);
+    }
+    return bookings;
+  }, [filter, bookings]);
+
+  const scrollToTable = () => {
+    try { tableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch {}
+  };
 
   return (
     <div className="flex min-h-[80vh] items-start justify-center bg-neutral-100">
@@ -33,21 +47,22 @@ const MyBookings = () => {
         )}
 
         <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div className="rounded-xl border border-blue-100 bg-blue-50/70 p-5 text-center shadow-sm">
+          <button onClick={() => { setFilter('all'); scrollToTable(); }} className="rounded-xl border border-blue-100 bg-blue-50/70 p-5 text-center shadow-sm hover:shadow cursor-pointer">
             <div className="text-[18px] font-semibold text-blue-600">Total Bookings</div>
             <div className="text-[32px] font-bold">{totalBookings}</div>
-          </div>
+          </button>
 
-          <div className="rounded-xl border border-yellow-100 bg-yellow-50 p-5 text-center shadow-sm">
+          <button onClick={() => { setFilter('upcoming'); scrollToTable(); }} className="rounded-xl border border-yellow-100 bg-yellow-50 p-5 text-center shadow-sm hover:shadow cursor-pointer">
             <div className="text-[18px] font-semibold text-yellow-700">Upcoming Bookings</div>
-            <div className="text-[32px] font-bold">{upcomingBookings}</div>
-          </div>
+            <div className="text-[32px] font-bold">{upcomingCount}</div>
+          </button>
         </div>
 
+        <div ref={tableRef} />
         {loading ? (
           <div className="my-8 text-center text-[18px] text-neutral-600">Loading bookings...</div>
         ) : (
-          <BookingTable bookings={bookings} />
+          <BookingTable bookings={filtered} actionMode={filter === 'all' ? 'cancel' : 'book'} />
         )}
       </div>
     </div>

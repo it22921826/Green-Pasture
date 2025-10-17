@@ -124,7 +124,7 @@ const Home = () => {
           Need help or have questions? Reach out to our support team:
         </p>
         <div className="text-lg font-bold">
-          Email: <a href="mailto:support@hotelms.com" className="text-[#000B58] hover:underline">support@hotelms.com</a>
+          Email: <a href="mailto:support@hotelms.com" className="text-[#000B58] hover:underline">greenpasturegmail.com</a>
         </div>
         <div className="text-lg font-bold">
           Phone: <span className="text-[#000B58]">+94 77 123 4567</span>

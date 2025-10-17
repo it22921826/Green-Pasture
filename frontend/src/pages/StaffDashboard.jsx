@@ -9,7 +9,7 @@ import AdminRefunds from '../components/AdminRefunds';
 import FacilityBookingTable from '../components/FacilityBookingTable';
 import Invoice from '../components/Invoice';
 import UsersTable from '../components/UsersTable';
-import FacilityBooking from './FacilityBooking';
+import FacilityManagementPanel from '../components/FacilityManagementPanel';
 import { getRooms, createRoom, updateRoom, deleteRoom } from '../api/roomApi';
 
 const StaffDashboard = () => {
@@ -196,10 +196,11 @@ const StaffDashboard = () => {
         )}
 
         {activeTab === 'manageFacilities' && (
-          <div className="mt-10">
-            <h3 className="mb-4 text-xl font-semibold text-neutral-900">Manage Facilities</h3>
+          <div className="mt-10 space-y-6">
+            <h3 className="text-xl font-semibold text-neutral-900">Manage Facilities</h3>
+            {/* Management Panel: create/edit/delete + table */}
             <div className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm">
-              <FacilityBooking />
+              <FacilityManagementPanel />
             </div>
           </div>
         )}

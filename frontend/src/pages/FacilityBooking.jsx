@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { formatCurrency } from '../utils/currency';
-import { createFacilityBooking, getAllFacilities, deleteFacility as apiDeleteFacility, getFacilityAvailability } from '../api/facilityApi';
+import { createFacilityBooking, getAllFacilities, getFacilityAvailability } from '../api/facilityApi';
 import AvailabilityCalendar from '../components/AvailabilityCalendar';
-import FacilityCreateForm from '../components/FacilityCreateForm';
-import { decodeToken } from '../utils/authHelper';
+// Public facilities view only
 
-const FacilityBooking = () => {
+const FacilityBooking = ({ embedded = false }) => {
   const [facilities, setFacilities] = useState([]);
   const navigate = useNavigate();
   const [loadingFacilities, setLoadingFacilities] = useState(true);
@@ -284,113 +283,26 @@ const FacilityBooking = () => {
   }, [selectedFacility]);
 
   const token = localStorage.getItem('token');
-  const user = token ? decodeToken(token) : null;
-  const role = user?.role || user?.user?.role;
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4">
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-[#000B58] mb-4">Facility Management</h1>
-          {role && ['Admin','Staff'].includes(role) && (
-            <FacilityCreateForm 
-              onCreated={(created)=>{
-                setFacilities(prev => [created, ...prev]);
-                setSelectedFacility(created._id);
-              }}
-              onUpdated={(updated)=>{
-                setFacilities(prev => prev.map(f => f._id === updated._id ? updated : f));
-              }}
-            />
-          )}
-          {/* Facilities table for Staff/Admin */}
-          {role && ['Admin','Staff'].includes(role) && (
-            <div className="mt-6 rounded-2xl border border-neutral-200 bg-white shadow p-4">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-neutral-800">Existing Facilities ({facilities.length})</h2>
-                <button
-                  type="button"
-                  onClick={async()=>{ try { setLoadingFacilities(true); const data = await getAllFacilities(); setFacilities(Array.isArray(data)?data:[]);} finally { setLoadingFacilities(false);} }}
-                  className="text-sm px-3 py-1 rounded bg-[#000B58] text-white hover:bg-[#001050] disabled:opacity-50"
-                  disabled={loadingFacilities}
-                >{loadingFacilities? 'Refreshing...' : 'Refresh'}</button>
-              </div>
-              {loadingFacilities ? (
-                <div className="text-sm text-neutral-600 py-6 text-center">Loading facilities...</div>
-              ) : facilities.length === 0 ? (
-                <div className="text-sm text-neutral-500 py-6 text-center">No facilities found. Create one above.</div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full text-sm">
-                    <thead className="bg-neutral-100 text-neutral-700">
-                      <tr>
-                        <th className="px-3 py-2 text-left font-medium">Name</th>
-                        <th className="px-3 py-2 text-left font-medium">Type</th>
-                        <th className="px-3 py-2 text-left font-medium">Location</th>
-                        <th className="px-3 py-2 text-left font-medium">Price</th>
-                        <th className="px-3 py-2 text-left font-medium">Max Guests</th>
-                        <th className="px-3 py-2 text-left font-medium">Available</th>
-                        <th className="px-3 py-2 text-left font-medium">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-neutral-200">
-                      {facilities.map(f => (
-                        <tr key={f._id} className="hover:bg-neutral-50">
-                          <td className="px-3 py-2 font-medium text-neutral-800">{f.name}</td>
-                          <td className="px-3 py-2">{f.type}</td>
-                          <td className="px-3 py-2">{f.location}</td>
-                          <td className="px-3 py-2">{formatCurrency(f.pricePerNight || 0)}</td>
-                          <td className="px-3 py-2">{f.maxGuests}</td>
-                          <td className="px-3 py-2">{f.isAvailable ? <span className="text-green-600">Yes</span> : <span className="text-red-600">No</span>}</td>
-                          <td className="px-3 py-2 flex gap-2">
-                            <button
-                              type="button"
-                              onClick={()=>{
-                                // Prefill create form by emitting a custom event (lightweight without refactoring form)
-                                const evt = new CustomEvent('facility-edit-request',{ detail: f });
-                                window.dispatchEvent(evt);
-                                window.scrollTo({ top: 0, behavior: 'smooth' });
-                              }}
-                              className="px-2 py-1 text-xs rounded bg-blue-600 text-white hover:bg-blue-700"
-                            >Edit</button>
-                            <button
-                              type="button"
-                              onClick={async()=>{
-                                if(!window.confirm(`Delete facility "${f.name}"? This cannot be undone.`)) return;
-                                try {
-                                  const token = localStorage.getItem('token');
-                                  if(!token) throw new Error('Not authenticated');
-                                  await apiDeleteFacility(f._id, token);
-                                  setFacilities(prev => prev.filter(x=>x._id !== f._id));
-                                } catch(err){
-                                  const msg = err.message || 'Failed to delete facility';
-                                  if(/403|authorized/i.test(msg)) {
-                                    alert('You do not have permission to delete this facility. (Admin or Staff only)');
-                                  } else {
-                                    alert(msg);
-                                  }
-                                }
-                              }}
-                              className="px-2 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700"
-                            >Delete</button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+    <div className={embedded ? '' : 'min-h-screen bg-gray-50 py-8'}>
+      <div className={embedded ? '' : 'max-w-4xl mx-auto px-4'}>
         {/* User-facing facilities list & booking modal */}
-        {!(role && ['Admin','Staff'].includes(role)) && (
+        {(
+          true
+        ) && (
           <div className="bg-white rounded-3xl shadow-lg overflow-hidden">
             {/* Header */}
-            <div className="bg-gradient-to-r from-[#000B58] to-[#001050] px-8 py-6">
-              <h1 className="text-3xl font-bold text-white text-center">All Facilities</h1>
-              <p className="text-white/80 text-center mt-1">Browse facilities and book instantly.</p>
-            </div>
+            {!embedded ? (
+              <div className="bg-gradient-to-r from-[#000B58] to-[#001050] px-8 py-6">
+                <h1 className="text-3xl font-bold text-white text-center">All Facilities</h1>
+                <p className="text-white/80 text-center mt-1">Browse facilities and book instantly.</p>
+              </div>
+            ) : (
+              <div className="px-6 py-4 border-b">
+                <h2 className="text-lg font-semibold text-neutral-900">All Facilities</h2>
+              </div>
+            )}
 
             <div className="p-8">
               {/* Filters */}
@@ -455,7 +367,7 @@ const FacilityBooking = () => {
         )}
 
         {/* Booking modal for selected facility */}
-        {!(role && ['Admin','Staff'].includes(role)) && selectedFacility && selectedFacilityData && (
+  {selectedFacility && selectedFacilityData && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 overflow-y-auto">
             <div className="relative w-full max-w-lg max-h-[90vh]">
               <button onClick={()=>setSelectedFacility('')} className="absolute -top-2 -right-2 z-10 rounded-full bg-white px-3 py-1 text-sm shadow">Close</button>

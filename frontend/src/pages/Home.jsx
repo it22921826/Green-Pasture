@@ -30,7 +30,7 @@ const Home = () => {
 
   return (
     <div
-      className="relative min-h-screen w-full pb-14"
+      className="relative min-h-screen w-full pb-14 pt-16"
       style={{
         backgroundImage: `url(${hotel})`,
         backgroundSize: 'cover',
@@ -41,15 +41,15 @@ const Home = () => {
     >
       {/* Dark overlay for contrast */}
       <div className="absolute inset-0 bg-black/45" />
-      <div className="relative mx-auto mt-16 max-w-3xl rounded-3xl border border-white/30 bg-white/70 p-11 text-center shadow-2xl backdrop-blur-xl">
+      <div className="relative mx-auto max-w-3xl rounded-3xl border border-white/30 bg-white/70 p-11 text-center shadow-2xl backdrop-blur-xl">
         <h1 className="mb-6 text-4xl font-extrabold tracking-wide text-[#000B58]">
           Welcome to GreenPasture Hotels
         </h1>
         <p className="mb-8 text-lg font-medium text-neutral-600">
-          Manage bookings, staff, and guests with ease.
+          A serene retreat nestled in a lush, natural setting. 
+          Escape the everyday in a tranquil haven offering comfortable rooms, refreshing green views, and a peaceful atmosphere perfect for relaxation and rejuvenation.
           <br />
-          Login or register to get started, or explore your dashboard and
-          bookings if you are already signed in.
+         
         </p>
 
         <div className="mb-8 flex justify-center gap-6">
@@ -77,7 +77,7 @@ const Home = () => {
         {/* Gallery */}
         <div className="mt-8">
           <h2 className="mb-4 text-2xl font-bold text-[#000B58]">
-            Gallery: Five Star Hotel Experience
+            Five Star Hotel Experience
           </h2>
           <div className="flex flex-wrap justify-center gap-5">
             {gallery.map((src, i) => (

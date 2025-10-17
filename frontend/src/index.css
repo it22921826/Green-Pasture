@@ -25,3 +25,19 @@ body {
 button, input, select, textarea {
   font-family: var(--font-base);
 }
+
+/* Hide native password reveal icon in Edge/IE to avoid double visibility icons */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+  display: none;
+}
+
+/* Hide native password reveal icon in WebKit (Safari/Chromium variants) */
+input[type="password"]::-webkit-textfield-decoration-container {
+  display: none;
+}
+input[type="password"]::-webkit-credentials-auto-fill-button {
+  visibility: hidden;
+  display: none;
+  pointer-events: none;
+}

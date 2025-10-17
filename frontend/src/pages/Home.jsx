@@ -1,7 +1,7 @@
 import React from "react";
 import SupportModal from "../components/SupportModal";
 import { Link } from "react-router-dom";
-import Hotel from "../assets/Hotel.jpg";
+import Hotel from "../assets/Hotel1.jpg";
 import H1 from "../assets/H1.jpg";
 import H2 from "../assets/H2.jpg";
 import H3 from "../assets/H3.jpg";

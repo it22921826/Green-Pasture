@@ -36,8 +36,8 @@ const FacilityBooking = ({ embedded = false }) => {
   const [loading, setLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
   const [facilityBlockedRanges, setFacilityBlockedRanges] = useState([]); // for selected facility
-  // Filters for user-facing facilities list
-  const [facilityFilters, setFacilityFilters] = useState({ type: '', location: '', minPrice: '', maxPrice: '' });
+  // Filters for user-facing facilities list (location removed)
+  const [facilityFilters, setFacilityFilters] = useState({ type: '', minPrice: '', maxPrice: '' });
 
   useEffect(() => {
     calculatePricing();
@@ -85,7 +85,6 @@ const FacilityBooking = ({ embedded = false }) => {
       setLoadingFacilities(true);
       const data = await getAllFacilities({
         type: facilityFilters.type,
-        location: facilityFilters.location,
         minPrice: facilityFilters.minPrice,
         maxPrice: facilityFilters.maxPrice,
       });
@@ -306,14 +305,13 @@ const FacilityBooking = ({ embedded = false }) => {
 
             <div className="p-8">
               {/* Filters */}
-              <form onSubmit={fetchFacilitiesWithFilters} className="bg-white rounded-lg border border-neutral-200 p-4 mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
+              <form onSubmit={fetchFacilitiesWithFilters} className="bg-white rounded-lg border border-neutral-200 p-4 mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
                 <input name="type" value={facilityFilters.type} onChange={(e)=>setFacilityFilters(prev=>({...prev, type:e.target.value}))} placeholder="Type (e.g., Conference Hall)" className="border rounded px-3 py-2" />
-                <input name="location" value={facilityFilters.location} onChange={(e)=>setFacilityFilters(prev=>({...prev, location:e.target.value}))} placeholder="Location" className="border rounded px-3 py-2" />
                 <input name="minPrice" value={facilityFilters.minPrice} onChange={(e)=>setFacilityFilters(prev=>({...prev, minPrice:e.target.value}))} placeholder="Min Price" className="border rounded px-3 py-2" />
                 <input name="maxPrice" value={facilityFilters.maxPrice} onChange={(e)=>setFacilityFilters(prev=>({...prev, maxPrice:e.target.value}))} placeholder="Max Price" className="border rounded px-3 py-2" />
-                <div className="md:col-span-4 flex gap-3">
+                <div className="md:col-span-3 flex gap-3">
                   <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Apply Filters</button>
-                  <button type="button" onClick={()=>{ setFacilityFilters({type:'',location:'',minPrice:'',maxPrice:''}); fetchFacilitiesWithFilters(); }} className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Reset</button>
+                  <button type="button" onClick={()=>{ setFacilityFilters({type:'',minPrice:'',maxPrice:''}); fetchFacilitiesWithFilters(); }} className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Reset</button>
                 </div>
               </form>
 
@@ -338,13 +336,17 @@ const FacilityBooking = ({ embedded = false }) => {
                           <h3 className="text-lg font-semibold">{f.name}</h3>
                           <span className="text-blue-600 font-bold">{formatCurrency(f.pricePerNight || 0)}</span>
                         </div>
-                        <p className="text-gray-600 text-sm">{f.location || '—'} • Max {f.maxGuests || 0} guests</p>
+                        <p className="text-gray-600 text-sm">Max {f.maxGuests || 0} guests</p>
                         <div className="mt-3 flex items-center justify-end gap-2">
                           <button
                             type="button"
                             className="px-3 py-1.5 text-sm rounded bg-emerald-600 text-white hover:bg-emerald-700 disabled:bg-gray-400"
                             disabled={!f.isAvailable}
-                            onClick={() => { setBookingMode('reserve'); setSelectedFacility(f._id); setError(''); setSuccess(''); }}
+                            onClick={() => {
+                              const token = localStorage.getItem('token');
+                              if (!token) { navigate('/login'); return; }
+                              setBookingMode('reserve'); setSelectedFacility(f._id); setError(''); setSuccess('');
+                            }}
                           >
                             Reserve
                           </button>
@@ -352,7 +354,11 @@ const FacilityBooking = ({ embedded = false }) => {
                             type="button"
                             className="px-3 py-1.5 text-sm rounded bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-400"
                             disabled={!f.isAvailable}
-                            onClick={() => { setBookingMode('book'); setSelectedFacility(f._id); setError(''); setSuccess(''); }}
+                            onClick={() => {
+                              const token = localStorage.getItem('token');
+                              if (!token) { navigate('/login'); return; }
+                              setBookingMode('book'); setSelectedFacility(f._id); setError(''); setSuccess('');
+                            }}
                           >
                             Book
                           </button>
@@ -374,7 +380,7 @@ const FacilityBooking = ({ embedded = false }) => {
               <div className="rounded-xl bg-white shadow-2xl max-h-[85vh] overflow-y-auto">
                 <div className="px-6 pt-6">
                   <h3 className="text-xl font-semibold text-neutral-800 mb-1">{bookingMode === 'reserve' ? 'Reserve' : 'Book'}: {selectedFacilityData.name}</h3>
-                  <p className="text-sm text-neutral-600 mb-4">{selectedFacilityData.location || ''} • Max {selectedFacilityData.maxGuests} guests • {formatCurrency(selectedFacilityData.pricePerNight || 0)} per night</p>
+                  <p className="text-sm text-neutral-600 mb-4">Max {selectedFacilityData.maxGuests} guests • {formatCurrency(selectedFacilityData.pricePerNight || 0)} per night</p>
                 </div>
                 <div className="px-6 pb-6">
                   {error && (

@@ -51,15 +51,15 @@ export default function Navbar() {
 
       {/* Main Navbar */}
       <div className="bg-gray-800 px-4 md:px-10 py-4 flex justify-between items-center">
-        {/* Logo */}
-        <div className="flex items-center gap-2">
+        {/* Logo (clickable → Home) */}
+        <Link to="/" className="flex items-center gap-2 hover:opacity-90" title="Home">
           <img
             src={logoImg}
             alt="GreenPasture"
             className="w-10 h-10 object-contain"
           />
           <span className="text-xl font-bold">GreenPasture</span>
-        </div>
+        </Link>
 
         {/* Center Nav Links */}
         
@@ -89,47 +89,51 @@ export default function Navbar() {
             </Link>
           ))}
 
-          {/* Settings */}
-          <button
-            className="p-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 transition"
-            title="Settings"
-            onClick={() => navigate('/settings')}
-          >
-            <Settings size={18} />
-          </button>
-
-          {/* Profile + dropdown */}
-          <div className="relative" ref={userRef}>
+          {/* Settings (hidden when logged in) */}
+          {!token && (
             <button
-              onClick={() => setOpenUser((v) => !v)}
-              className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-white/20 hover:ring-white/40 transition"
-              title="Profile"
+              className="p-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 transition"
+              title="Settings"
+              onClick={() => navigate('/settings')}
             >
-              {/* replace with your user image */}
-              <img
-                src="https://i.pravatar.cc/100?img=12"
-                alt="User"
-                className="w-full h-full object-cover"
-              />
+              <Settings size={18} />
             </button>
+          )}
 
-            {openUser && (
-              <div className="absolute right-0 mt-3 w-56 bg-white text-gray-900 rounded-xl shadow-2xl p-2">
-                <Link to="/profile" className="block px-3 py-2 rounded-lg text-sm hover:bg-gray-100 text-gray-800">
-                  Profile
-                </Link>
-                <Link to="/settings" className="block px-3 py-2 rounded-lg text-sm text-blue-600 hover:bg-gray-100">
-                  Settings
-                </Link>
-                <button
-                  onClick={() => { localStorage.removeItem('token'); navigate('/login'); }}
-                  className="w-full text-left px-3 py-2 rounded-lg text-sm text-red-600 hover:bg-red-50"
-                >
-                  Logout
-                </button>
-              </div>
-            )}
-          </div>
+          {/* Profile + dropdown (only when logged in) */}
+          {token && (
+            <div className="relative" ref={userRef}>
+              <button
+                onClick={() => setOpenUser((v) => !v)}
+                className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-white/20 hover:ring-white/40 transition"
+                title="Profile"
+              >
+                {/* replace with your user image */}
+                <img
+                  src="https://i.pravatar.cc/100?img=12"
+                  alt="User"
+                  className="w-full h-full object-cover"
+                />
+              </button>
+
+              {openUser && (
+                <div className="absolute right-0 mt-3 w-56 bg-white text-gray-900 rounded-xl shadow-2xl p-2">
+                  <Link to="/profile" className="block px-3 py-2 rounded-lg text-sm hover:bg-gray-100 text-gray-800">
+                    Profile
+                  </Link>
+                  <Link to="/settings" className="block px-3 py-2 rounded-lg text-sm text-blue-600 hover:bg-gray-100">
+                    Settings
+                  </Link>
+                  <button
+                    onClick={() => { localStorage.removeItem('token'); navigate('/login'); }}
+                    className="w-full text-left px-3 py-2 rounded-lg text-sm text-red-600 hover:bg-red-50"
+                  >
+                    Logout
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Mobile Menu Icon (kept for small screens) */}
           <button className="md:hidden">

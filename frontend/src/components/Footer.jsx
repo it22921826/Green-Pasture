@@ -41,71 +41,75 @@ const Icon = ({ type, className }) => {
 const Footer = () => {
   const year = new Date().getFullYear();
   return (
-    <footer className="bg-[#F6F9FC] text-gray-500/80 pt-8 px-6 md:px-16 lg:px-24 xl:px-32 mt-12">
+    <footer className="bg-gray-900 text-gray-300 pt-8 px-6 md:px-16 lg:px-24 xl:px-32">
       <div className="flex flex-wrap justify-between gap-12 md:gap-6">
         <div className="max-w-80">
           <img src={logo} alt="logo" className="mb-4 h-8 md:h-9" />
-          <p className="text-sm">
+          <p className="text-sm text-gray-400">
             Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text.
           </p>
-          <div className="flex items-center gap-3 mt-4 text-gray-600">
-            <a href="#" aria-label="Instagram" className="hover:text-gray-800 transition-colors">
+          <div className="flex items-center gap-3 mt-4 text-gray-400">
+            <a href="#" aria-label="Instagram" className="hover:text-white transition-colors">
               <Icon type="instagram" className="w-5 h-5" />
             </a>
-            <a href="#" aria-label="Facebook" className="hover:text-gray-800 transition-colors">
+            <a href="#" aria-label="Facebook" className="hover:text-white transition-colors">
               <Icon type="facebook" className="w-5 h-5" />
             </a>
-            <a href="#" aria-label="Twitter" className="hover:text-gray-800 transition-colors">
+            <a href="#" aria-label="Twitter" className="hover:text-white transition-colors">
               <Icon type="twitter" className="w-5 h-5" />
             </a>
-            <a href="#" aria-label="LinkedIn" className="hover:text-gray-800 transition-colors">
+            <a href="#" aria-label="LinkedIn" className="hover:text-white transition-colors">
               <Icon type="linkedin" className="w-5 h-5" />
             </a>
           </div>
         </div>
 
         <div>
-          <p className="text-lg text-gray-800 font-semibold">COMPANY</p>
+          <p className="text-lg text-white font-semibold">COMPANY</p>
           <ul className="mt-3 flex flex-col gap-2 text-sm">
-            <li><a href="#">About</a></li>
-            <li><a href="#">Careers</a></li>
-            <li><a href="#">Press</a></li>
-            <li><a href="#">Blog</a></li>
-            <li><a href="#">Partners</a></li>
+            <li><a href="#" className="hover:text-white">About</a></li>
+            <li><a href="#" className="hover:text-white">Careers</a></li>
+            <li><a href="#" className="hover:text-white">Press</a></li>
+            <li><a href="#" className="hover:text-white">Blog</a></li>
+            <li><a href="#" className="hover:text-white">Partners</a></li>
           </ul>
         </div>
 
         <div>
-          <p className="text-lg text-gray-800 font-semibold">SUPPORT</p>
+          <p className="text-lg text-white font-semibold">SUPPORT</p>
           <ul className="mt-3 flex flex-col gap-2 text-sm">
-            <li><a href="#">Help Center</a></li>
-            <li><a href="#">Safety Information</a></li>
-            <li><a href="#">Cancellation Options</a></li>
-            <li><a href="#">Contact Us</a></li>
-            <li><a href="#">Accessibility</a></li>
+            <li><a href="#" className="hover:text-white">Help Center</a></li>
+            <li><a href="#" className="hover:text-white">Safety Information</a></li>
+            <li><a href="#" className="hover:text-white">Cancellation Options</a></li>
+            <li><a href="#" className="hover:text-white">Contact Us</a></li>
+            <li><a href="#" className="hover:text-white">Accessibility</a></li>
           </ul>
         </div>
 
         <div className="max-w-80">
-          <p className="text-lg text-gray-800 font-semibold">STAY UPDATED</p>
-          <p className="mt-3 text-sm">
+          <p className="text-lg text-white font-semibold">STAY UPDATED</p>
+          <p className="mt-3 text-sm text-gray-400">
             Subscribe to our newsletter for inspiration and special offers.
           </p>
           <div className="flex items-center mt-4">
-            <input type="email" className="bg-white rounded-l border border-gray-300 h-9 px-3 outline-none" placeholder="Your email" />
-            <button className="flex items-center justify-center bg-black h-9 w-9 aspect-square rounded-r">
+            <input
+              type="email"
+              className="bg-gray-800 text-gray-100 placeholder-gray-400 rounded-l border border-gray-700 h-9 px-3 outline-none focus:border-gray-500"
+              placeholder="Your email"
+            />
+            <button className="flex items-center justify-center bg-white/10 hover:bg-white/20 h-9 w-9 aspect-square rounded-r">
               <Icon type="arrow" className="w-3.5 h-3.5 text-white" />
             </button>
           </div>
         </div>
       </div>
-      <hr className="border-gray-300 mt-8" />
-      <div className="flex flex-col md:flex-row gap-2 items-center justify-between py-5">
+      <hr className="border-gray-700 mt-8" />
+      <div className="flex flex-col md:flex-row gap-2 items-center justify-between py-5 text-gray-400">
         <p>© {year} GreenPastures. All rights reserved.</p>
         <ul className="flex items-center gap-4">
-          <li><a href="#">Privacy</a></li>
-          <li><a href="#">Terms</a></li>
-          <li><a href="#">Sitemap</a></li>
+          <li><a href="#" className="hover:text-white">Privacy</a></li>
+          <li><a href="#" className="hover:text-white">Terms</a></li>
+          <li><a href="#" className="hover:text-white">Sitemap</a></li>
         </ul>
       </div>
     </footer>

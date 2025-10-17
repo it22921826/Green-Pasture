@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { formatCurrency } from '../utils/currency';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { decodeToken } from '../utils/authHelper';
 import BookingForm from './BookingForm';
 import { getRooms } from '../api/roomApi';
@@ -10,6 +10,7 @@ const Rooms = () => {
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
   const user = token ? decodeToken(token) : null;
   const role = (user?.role || user?.user?.role || '').toLowerCase();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [filters, setFilters] = useState({ type: '', status: '', minPrice: '', maxPrice: '' });
@@ -151,14 +152,20 @@ const Rooms = () => {
                         <button
                           type="button"
                           className="px-3 py-1.5 text-sm rounded bg-emerald-600 text-white hover:bg-emerald-700 disabled:bg-gray-400"
-                          onClick={() => setSelectedRoom({ ...room, __mode: 'reserve' })}
+                          onClick={() => {
+                            if (!token) { navigate('/login'); return; }
+                            setSelectedRoom({ ...room, __mode: 'reserve' });
+                          }}
                         >
                           Reserve
                         </button>
                         <button
                           type="button"
                           className="px-3 py-1.5 text-sm rounded bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-400"
-                          onClick={() => setSelectedRoom({ ...room, __mode: 'book' })}
+                          onClick={() => {
+                            if (!token) { navigate('/login'); return; }
+                            setSelectedRoom({ ...room, __mode: 'book' });
+                          }}
                         >
                           Book
                         </button>

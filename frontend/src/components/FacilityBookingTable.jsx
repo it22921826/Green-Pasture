@@ -86,7 +86,7 @@ const FacilityBookingTable = ({ bookings: incoming }) => {
 				"Guest",
 				"Amount",
 			]];
-			const body = bookings.map((b) => [
+						const body = (filtered || bookings).map((b) => [
 				b.bookingReference || "-",
 				b.facility?.name || "-",
 				b.facility?.type || "-",

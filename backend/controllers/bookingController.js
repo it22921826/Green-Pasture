@@ -2,6 +2,25 @@ import Booking from '../models/Booking.js';
 import Room from '../models/Room.js';
 import nodemailer from 'nodemailer';
 
+// Public: get availability (blocked date ranges) for a given roomNumber
+export const getAvailability = async (req, res) => {
+  try {
+    const { roomNumber } = req.query;
+    if (!roomNumber) return res.status(400).json({ message: 'roomNumber is required' });
+    const list = await Booking.find({
+      roomNumber: String(roomNumber).trim(),
+      status: { $in: ['PendingPayment', 'Booked', 'CheckedIn'] },
+    }).select('checkIn checkOut');
+    const ranges = list.map(b => ({
+      start: b.checkIn,
+      end: b.checkOut,
+    }));
+    res.json({ roomNumber, ranges });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 // Create booking (also updates Room status to 'Booked')
 export const createBooking = async (req, res) => {
   try {

@@ -11,3 +11,6 @@ export const deleteBooking = (id, token) => axios.delete(`${API_URL}/${id}`, { h
 export const cancelBooking = (id, token) => axios.patch(`${API_URL}/${id}/cancel`, {}, { headers: { Authorization: `Bearer ${token}` } });
 // Dedicated status update (PATCH /:id/status) expecting body { status: 'Approved' | 'Pending' }
 export const setBookingStatus = (id, uiStatus, token) => axios.patch(`${API_URL}/${id}/status`, { status: uiStatus }, { headers: { Authorization: `Bearer ${token}` } });
+
+// Public: get room availability (blocked date ranges) for a room number
+export const getRoomAvailability = (roomNumber) => axios.get(`${API_URL}/availability`, { params: { roomNumber } }).then(r => r.data);

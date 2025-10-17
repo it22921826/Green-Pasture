@@ -38,9 +38,15 @@ const StaffDashboard = () => {
     getRooms().then((data)=> setRooms(data || [])).catch(()=>{});
   }, []);
 
+  // Dashboard metrics
   const totalBookings = bookings.length;
-  const today = new Date().toISOString().slice(0, 10);
-  const todayBookings = bookings.filter(b => b.date && b.date.startsWith(today)).length;
+  const todayBookings = (bookings || []).filter(b => {
+    const todayStr = new Date().toDateString();
+    const createdStr = b?.createdAt ? new Date(b.createdAt).toDateString() : null;
+    const checkInStr = b?.checkIn ? new Date(b.checkIn).toDateString() : null;
+    // Count if the booking was created today OR has a check-in today
+    return createdStr === todayStr || checkInStr === todayStr;
+  }).length;
   const MAX_ROOMS = 50;
   const atRoomLimit = (rooms?.length || 0) >= MAX_ROOMS;
   const filteredRooms = roomSearch.trim()
@@ -58,33 +64,7 @@ const StaffDashboard = () => {
       })
     : rooms;
 
-  const downloadBookingsPdf = async () => {
-    try {
-      const doc = new jsPDF();
-      const startY = await addBrandedHeader(doc, 'Room Bookings Report');
-      addGeneratedLine(doc, startY, 'Generated');
-
-      const head = [[
-        'Room', 'Check-In', 'Check-Out', 'Status', 'Guest', 'Staff', 'Requests'
-      ]];
-      const body = (bookings || []).map(b => [
-        b.roomNumber ?? '-',
-        b.checkIn ? new Date(b.checkIn).toLocaleDateString() : '-',
-        b.checkOut ? new Date(b.checkOut).toLocaleDateString() : '-',
-        b.status ?? '-',
-        (b.guest && (b.guest.name || b.guest.email || b.guest)) || '-',
-        (b.staff && (b.staff.name || b.staff.email || b.staff)) || '-',
-        b.specialRequests || '-'
-      ]);
-
-      autoTable(doc, { head, body, headStyles: { fillColor: [0,11,88], halign: 'center' }, styles: { fontSize: 9 }, startY });
-      const date = new Date().toISOString().slice(0,10);
-      doc.save(`room_bookings_${date}.pdf`);
-    } catch (e) {
-      console.error('bookings pdf error', e);
-      alert('Failed to generate bookings PDF');
-    }
-  };
+  // Note: Bookings PDF export button removed per request.
 
   const downloadRoomsPdf = async () => {
     try {
@@ -184,9 +164,6 @@ const StaffDashboard = () => {
         </div>
         {activeTab === 'bookings' && (
           <>
-            <div className="mb-2 flex items-center justify-end">
-              <button onClick={downloadBookingsPdf} className="rounded bg-[#000B58] px-3 py-2 text-white shadow hover:bg-[#001050]">⬇️ Download Bookings PDF</button>
-            </div>
             {loading ? (
               <div className="my-8 text-center text-[18px] text-neutral-600">Loading bookings...</div>
             ) : (
@@ -197,9 +174,8 @@ const StaffDashboard = () => {
 
         {activeTab === 'reserved' && (
           <>
-            <div className="mb-2 flex items-center justify-between">
+            <div className="mb-2 flex items-center justify-start">
               <h3 className="text-xl font-semibold text-neutral-900">Reserved Bookings</h3>
-              <button onClick={downloadBookingsPdf} className="rounded bg-[#000B58] px-3 py-2 text-white shadow hover:bg-[#001050]">⬇️ Download Bookings PDF</button>
             </div>
             {loading ? (
               <div className="my-8 text-center text-[18px] text-neutral-600">Loading reservations...</div>

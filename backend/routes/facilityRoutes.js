@@ -11,7 +11,8 @@ import {
   updateFacilityBooking,
   cancelFacilityBooking,
   deleteFacilityBooking,
-  markFacilityBookingPaid
+  markFacilityBookingPaid,
+  getFacilityAvailability
 } from '../controllers/facilityController.js';
 import { protect } from '../middlewares/authMiddleware.js';
 import { authorizeRoles } from '../middlewares/roleMiddleware.js';
@@ -29,6 +30,8 @@ router.post('/bookings/:id/mark-paid', protect, markFacilityBookingPaid);
 
 // Facility routes
 router.get('/', getAllFacilities); // Public route to view facilities
+// Public availability for a facility (must come before '/:id')
+router.get('/:id/availability', getFacilityAvailability);
 router.post('/', protect, authorizeRoles('Admin', 'Staff'), createFacility);
 router.put('/:id', protect, authorizeRoles('Admin', 'Staff'), updateFacility);
 // Allow both Admin and Staff to delete facilities (previously Admin-only)

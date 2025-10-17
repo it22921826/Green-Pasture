@@ -3,6 +3,24 @@ import Facility from '../models/Facility.js';
 import FacilityBooking from '../models/FacilityBooking.js';
 import nodemailer from 'nodemailer';
 
+// Public: get availability (blocked date ranges) for a given facility id
+export const getFacilityAvailability = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({ message: 'Invalid facility id' });
+    }
+    const list = await FacilityBooking.find({
+      facility: id,
+      status: { $in: ['PendingPayment', 'Confirmed', 'CheckedIn'] },
+    }).select('checkIn checkOut');
+    const ranges = list.map(b => ({ start: b.checkIn, end: b.checkOut }));
+    res.json({ facilityId: id, ranges });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 // Get all facilities
 export const getAllFacilities = async (req, res) => {
   try {

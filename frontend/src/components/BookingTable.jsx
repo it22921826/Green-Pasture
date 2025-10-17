@@ -3,6 +3,9 @@ import { cancelBooking, setBookingStatus, deleteBooking } from "../api/bookingAp
 import { decodeToken } from "../utils/authHelper";
 import RefundForm from './RefundForm';
 import BookingForm from "../pages/BookingForm";
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { addBrandedHeader, addGeneratedLine } from '../utils/pdfHeader';
 
 const BookingTable = ({ bookings: incoming, showStatusControl = true, actionMode = 'cancel' }) => {
   const [rows, setRows] = useState(incoming || []);
@@ -140,6 +143,29 @@ const BookingTable = ({ bookings: incoming, showStatusControl = true, actionMode
     }
   };
 
+  const downloadPdf = async () => {
+    try {
+      const doc = new jsPDF();
+      const startY = await addBrandedHeader(doc, 'Room Bookings Report');
+      addGeneratedLine(doc, startY, 'Generated');
+      const head = [[ 'Room', 'Check-In', 'Check-Out', 'Status', 'Guest', 'Requests' ]];
+      const body = (filtered || []).map(b => [
+        b.roomNumber ?? '-',
+        b.checkIn ? new Date(b.checkIn).toLocaleDateString() : '-',
+        b.checkOut ? new Date(b.checkOut).toLocaleDateString() : '-',
+        friendlyStatus(b.status) ?? '-',
+        (b.guest && (b.guest.name || b.guest)) || '-',
+        b.specialRequests || '-'
+      ]);
+      autoTable(doc, { head, body, headStyles: { fillColor: [0,11,88], halign: 'center' }, styles: { fontSize: 9 }, startY });
+      const date = new Date().toISOString().slice(0,10);
+      doc.save(`room_bookings_${date}.pdf`);
+    } catch (e) {
+      console.error('bookings pdf error', e);
+      alert('Failed to generate bookings PDF');
+    }
+  };
+
   return (
     <div className="mt-5 overflow-x-auto">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
@@ -154,6 +180,14 @@ const BookingTable = ({ bookings: incoming, showStatusControl = true, actionMode
           <div className="text-xs text-neutral-500">
             {search ? `${filtered.length} / ${rows.length} shown` : `${rows.length} total`}
           </div>
+          <button
+            type="button"
+            onClick={downloadPdf}
+            className="rounded bg-[#000B58] px-3 py-1.5 text-white shadow hover:bg-[#001050]"
+            title="Download filtered bookings as PDF"
+          >
+            ⬇️ PDF
+          </button>
           {role && ['Staff','Admin'].includes(role) && (
             <div className="flex items-center gap-2">
               <label className="flex items-center gap-1 text-sm">
@@ -264,20 +298,22 @@ const BookingTable = ({ bookings: incoming, showStatusControl = true, actionMode
         />
       )}
       {showBookingFor && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="relative w-full max-w-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 overflow-y-auto">
+          <div className="relative w-full max-w-2xl max-h-[90vh]">
             <button
               onClick={() => setShowBookingFor(null)}
               className="absolute -top-2 -right-2 z-10 rounded-full bg-white px-3 py-1 text-sm shadow"
             >
               ✕
             </button>
-            <BookingForm
-              roomNumber={showBookingFor.roomNumber}
-              mode="book"
-              onSuccess={() => setShowBookingFor(null)}
-              embedded
-            />
+            <div className="rounded-xl bg-white shadow-2xl max-h-[85vh] overflow-y-auto">
+              <BookingForm
+                roomNumber={showBookingFor.roomNumber}
+                mode="book"
+                onSuccess={() => setShowBookingFor(null)}
+                embedded
+              />
+            </div>
           </div>
         </div>
       )}

@@ -172,10 +172,10 @@ const Rooms = () => {
         )}
 
         {selectedRoom && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-            <div className="relative w-full max-w-lg">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 overflow-y-auto">
+            <div className="relative w-full max-w-lg max-h-[90vh]">
               <button onClick={closeForm} className="absolute -top-2 -right-2 z-10 rounded-full bg-white px-3 py-1 text-sm shadow">Close</button>
-              <div className="rounded-xl bg-white shadow-2xl">
+              <div className="rounded-xl bg-white shadow-2xl max-h-[85vh] overflow-y-auto">
                 <BookingForm roomNumber={selectedRoom.roomNumber} roomPrice={selectedRoom.price} mode={selectedRoom.__mode || 'book'} onSuccess={handleBookingSuccess} />
               </div>
             </div>

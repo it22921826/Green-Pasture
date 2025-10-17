@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { getMyBookings } from '../api/bookingApi';
+import { getMyFacilityBookings } from '../api/facilityApi';
 import BookingTable from '../components/BookingTable';
 
 const MyBookings = () => {
@@ -9,26 +10,44 @@ const MyBookings = () => {
 
   useEffect(() => {
     const token = localStorage.getItem('token');
-    getMyBookings(token)
-      .then(({ data }) => {
-        setBookings(data);
-        setLoading(false);
-      })
-      .catch(() => {
+    const load = async () => {
+      try {
+        setLoading(true);
+        const [roomsRes, facilityItems] = await Promise.all([
+          getMyBookings(token).catch(() => ({ data: [] })),
+          getMyFacilityBookings(token).catch(() => []),
+        ]);
+        const roomBookings = Array.isArray(roomsRes?.data) ? roomsRes.data : [];
+        const facilityBookings = Array.isArray(facilityItems)
+          ? facilityItems.map((fb) => ({
+              _id: fb._id,
+              roomNumber: fb.facility?.name || 'Facility',
+              checkIn: fb.checkIn,
+              checkOut: fb.checkOut,
+              status: fb.status,
+              guest: fb.guest?.name || fb.guest,
+              specialRequests: fb.specialRequests || '',
+              source: 'facility',
+            }))
+          : [];
+        setBookings([...roomBookings, ...facilityBookings].sort((a,b)=> new Date(b.checkIn||b.date||0) - new Date(a.checkIn||a.date||0)));
+      } catch (e) {
         setError('Failed to load bookings');
+      } finally {
         setLoading(false);
-      });
+      }
+    };
+    load();
   }, []);
 
   const [filter, setFilter] = useState('all'); // 'all' | 'upcoming'
   const totalBookings = bookings.length;
-  const upcomingCount = useMemo(() => bookings.filter(b => new Date(b.checkIn || b.date) > new Date()).length, [bookings]);
+  const upcomingCount = useMemo(() => bookings.filter(b => ['Pending','PendingPayment'].includes(b.status)).length, [bookings]);
   const tableRef = useRef(null);
 
   const filtered = useMemo(() => {
     if (filter === 'upcoming') {
-      const now = new Date();
-      return bookings.filter(b => new Date(b.checkIn || b.date) > now);
+      return bookings.filter(b => ['Pending','PendingPayment'].includes(b.status));
     }
     return bookings;
   }, [filter, bookings]);

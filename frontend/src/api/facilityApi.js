@@ -127,3 +127,11 @@ export const deleteFacilityBooking = async (id, token) => {
   if (!res.ok) throw new Error((data && data.message) || 'Failed to delete booking');
   return data;
 };
+
+// Public: get facility availability (blocked date ranges)
+export const getFacilityAvailability = async (facilityId) => {
+  const res = await fetch(`${API_BASE_URL}/facilities/${facilityId}/availability`);
+  if (!res.ok) throw new Error('Failed to fetch facility availability');
+  const data = await safeJson(res);
+  return data;
+};

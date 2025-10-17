@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { formatCurrency } from '../utils/currency';
-import { createFacilityBooking, getAllFacilities, deleteFacility as apiDeleteFacility } from '../api/facilityApi';
+import { createFacilityBooking, getAllFacilities, deleteFacility as apiDeleteFacility, getFacilityAvailability } from '../api/facilityApi';
+import AvailabilityCalendar from '../components/AvailabilityCalendar';
 import FacilityCreateForm from '../components/FacilityCreateForm';
 import { decodeToken } from '../utils/authHelper';
 
@@ -10,6 +11,7 @@ const FacilityBooking = () => {
   const navigate = useNavigate();
   const [loadingFacilities, setLoadingFacilities] = useState(true);
   const [selectedFacility, setSelectedFacility] = useState('');
+  const [bookingMode, setBookingMode] = useState('book'); // 'book' | 'reserve'
   const [form, setForm] = useState({
     checkIn: '',
     checkOut: '',
@@ -34,6 +36,7 @@ const FacilityBooking = () => {
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
+  const [facilityBlockedRanges, setFacilityBlockedRanges] = useState([]); // for selected facility
   // Filters for user-facing facilities list
   const [facilityFilters, setFacilityFilters] = useState({ type: '', location: '', minPrice: '', maxPrice: '' });
 
@@ -225,20 +228,25 @@ const FacilityBooking = () => {
       };
       
       const created = await createFacilityBooking(bookingData, token);
-      setSuccess('Facility booking created successfully! Redirecting to payment...');
-
-      // Navigate to payment page with booking details for prefill
-      setTimeout(() => {
-        navigate('/payment', {
-          state: {
-            bookingId: created?._id,
-            facilityName: selected.name,
-            amount: pricing.finalAmount,
-            totalNights: pricing.totalNights,
-            pricePerNight: pricing.pricePerNight
-          }
-        });
-      }, 800);
+      if (bookingMode === 'reserve') {
+        setSuccess('Reservation created successfully!');
+        // Keep user on modal; auto-close after a short delay
+        setTimeout(() => { setSelectedFacility(''); }, 900);
+      } else {
+        setSuccess('Facility booking created successfully! Redirecting to payment...');
+        // Navigate to payment page with booking details for prefill
+        setTimeout(() => {
+          navigate('/payment', {
+            state: {
+              bookingId: created?._id,
+              facilityName: selected.name,
+              amount: pricing.finalAmount,
+              totalNights: pricing.totalNights,
+              pricePerNight: pricing.pricePerNight
+            }
+          });
+        }, 800);
+      }
       
       // Reset form
       setForm(prev => ({
@@ -261,6 +269,19 @@ const FacilityBooking = () => {
   };
 
   const selectedFacilityData = facilities.find(f => f._id === selectedFacility);
+
+  // Fetch facility availability when selection changes
+  useEffect(() => {
+    let ignore = false;
+    (async () => {
+      if (!selectedFacility) { setFacilityBlockedRanges([]); return; }
+      try {
+        const data = await getFacilityAvailability(selectedFacility);
+        if (!ignore && data && Array.isArray(data.ranges)) setFacilityBlockedRanges(data.ranges);
+      } catch (_) { if (!ignore) setFacilityBlockedRanges([]); }
+    })();
+    return () => { ignore = true; };
+  }, [selectedFacility]);
 
   const token = localStorage.getItem('token');
   const user = token ? decodeToken(token) : null;
@@ -406,13 +427,20 @@ const FacilityBooking = () => {
                           <span className="text-blue-600 font-bold">{formatCurrency(f.pricePerNight || 0)}</span>
                         </div>
                         <p className="text-gray-600 text-sm">{f.location || '—'} • Max {f.maxGuests || 0} guests</p>
-                        <div className="mt-3 flex items-center justify-between">
-                          <span className={`inline-block text-xs px-2 py-1 rounded-full ${f.isAvailable ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{f.isAvailable ? 'Available' : 'Unavailable'}</span>
+                        <div className="mt-3 flex items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            className="px-3 py-1.5 text-sm rounded bg-emerald-600 text-white hover:bg-emerald-700 disabled:bg-gray-400"
+                            disabled={!f.isAvailable}
+                            onClick={() => { setBookingMode('reserve'); setSelectedFacility(f._id); setError(''); setSuccess(''); }}
+                          >
+                            Reserve
+                          </button>
                           <button
                             type="button"
                             className="px-3 py-1.5 text-sm rounded bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-400"
                             disabled={!f.isAvailable}
-                            onClick={() => { setSelectedFacility(f._id); setError(''); setSuccess(''); }}
+                            onClick={() => { setBookingMode('book'); setSelectedFacility(f._id); setError(''); setSuccess(''); }}
                           >
                             Book
                           </button>
@@ -433,7 +461,7 @@ const FacilityBooking = () => {
               <button onClick={()=>setSelectedFacility('')} className="absolute -top-2 -right-2 z-10 rounded-full bg-white px-3 py-1 text-sm shadow">Close</button>
               <div className="rounded-xl bg-white shadow-2xl max-h-[85vh] overflow-y-auto">
                 <div className="px-6 pt-6">
-                  <h3 className="text-xl font-semibold text-neutral-800 mb-1">Book: {selectedFacilityData.name}</h3>
+                  <h3 className="text-xl font-semibold text-neutral-800 mb-1">{bookingMode === 'reserve' ? 'Reserve' : 'Book'}: {selectedFacilityData.name}</h3>
                   <p className="text-sm text-neutral-600 mb-4">{selectedFacilityData.location || ''} • Max {selectedFacilityData.maxGuests} guests • {formatCurrency(selectedFacilityData.pricePerNight || 0)} per night</p>
                 </div>
                 <div className="px-6 pb-6">
@@ -452,6 +480,14 @@ const FacilityBooking = () => {
                         <input type="date" name="checkOut" value={form.checkOut} onChange={handleChange} className={`w-full px-3 py-2 border rounded ${fieldErrors.checkOut ? 'border-red-400' : 'border-gray-300'}`} />
                       </div>
                       {(fieldErrors.checkIn || fieldErrors.checkOut) && <p className="text-xs text-red-600 mt-1">{fieldErrors.checkIn || fieldErrors.checkOut}</p>}
+                      <div className="mt-3">
+                        <AvailabilityCalendar
+                          blockedRanges={facilityBlockedRanges}
+                          valueStart={form.checkIn}
+                          valueEnd={form.checkOut}
+                          onChange={({ start, end }) => setForm(prev => ({ ...prev, checkIn: start || '', checkOut: end || '' }))}
+                        />
+                      </div>
                     </div>
 
                     {/* Guests and options */}
@@ -470,6 +506,9 @@ const FacilityBooking = () => {
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Discount Code</label>
                       <input name="discountCode" value={form.discountCode} onChange={handleChange} className="w-full px-3 py-2 border rounded border-gray-300" placeholder="HERITAGE10 / EARLY20" />
+                      {facilityBlockedRanges.length > 0 && (
+                        <p className="text-xs text-red-600 mt-1">Some dates are unavailable for this facility.</p>
+                      )}
                     </div>
 
                     {/* Special requests */}
@@ -506,7 +545,7 @@ const FacilityBooking = () => {
                     {/* Submit */}
                     <div className="pt-1">
                       <button type="submit" disabled={loading} className="w-full bg-[#000B58] hover:bg-[#001050] text-white text-sm font-semibold px-6 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed">
-                        {loading ? 'Booking...' : 'Book Facility'}
+                        {loading ? (bookingMode === 'reserve' ? 'Reserving...' : 'Booking...') : (bookingMode === 'reserve' ? 'Reserve Facility' : 'Book Facility')}
                       </button>
                     </div>
                   </form>

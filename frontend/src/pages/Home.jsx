@@ -39,8 +39,8 @@ const Home = () => {
         backgroundAttachment: 'fixed'
       }}
     >
-      {/* Dark overlay for contrast */}
-      <div className="absolute inset-0 bg-black/45" />
+  {/* Dark overlay for contrast (doesn't block clicks) */}
+  <div className="absolute inset-0 bg-black/45 pointer-events-none" />
       <div className="relative mx-auto max-w-3xl rounded-3xl border border-white/30 bg-white/70 p-11 text-center shadow-2xl backdrop-blur-xl">
         <h1 className="mb-6 text-4xl font-extrabold tracking-wide text-[#000B58]">
           Welcome to GreenPasture Hotels

@@ -34,7 +34,7 @@ export default function Navbar() {
   }, []);
 
   return (
-    <header className="w-full text-white font-sans">
+    <header className="w-full text-white font-sans relative z-50">
       {/* Top Bar */}
       <div className="bg-gray-900 text-sm px-6 py-2 flex justify-between items-center">
        
@@ -117,15 +117,27 @@ export default function Navbar() {
               </button>
 
               {openUser && (
-                <div className="absolute right-0 mt-3 w-56 bg-white text-gray-900 rounded-xl shadow-2xl p-2">
-                  <Link to="/profile" className="block px-3 py-2 rounded-lg text-sm hover:bg-gray-100 text-gray-800">
+                <div className="absolute right-0 mt-3 z-50 w-56 bg-white text-gray-900 rounded-xl shadow-2xl p-2">
+                  <Link
+                    to="/profile"
+                    onClick={() => setOpenUser(false)}
+                    className="block px-3 py-2 rounded-lg text-sm hover:bg-gray-100 text-gray-800"
+                  >
                     Profile
                   </Link>
-                  <Link to="/settings" className="block px-3 py-2 rounded-lg text-sm text-blue-600 hover:bg-gray-100">
+                  <Link
+                    to="/settings"
+                    onClick={() => setOpenUser(false)}
+                    className="block px-3 py-2 rounded-lg text-sm text-blue-600 hover:bg-gray-100"
+                  >
                     Settings
                   </Link>
                   <button
-                    onClick={() => { localStorage.removeItem('token'); navigate('/login'); }}
+                    onClick={() => {
+                      setOpenUser(false);
+                      localStorage.removeItem('token');
+                      navigate('/login');
+                    }}
                     className="w-full text-left px-3 py-2 rounded-lg text-sm text-red-600 hover:bg-red-50"
                   >
                     Logout

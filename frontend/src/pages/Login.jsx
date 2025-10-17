@@ -3,6 +3,7 @@ import Hotel from "../assets/Hotel.jpg";
 import { useNavigate, Link } from "react-router-dom";
 import { login } from "../api/userApi"; // Ensure API is defined
 import { decodeToken, hasRole } from "../utils/authHelper";
+import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -75,15 +76,20 @@ const Login = () => {
             <label htmlFor="email" className="mb-1 block font-medium">
               Email
             </label>
-            <input
-              id="email"
-              type="email"
-              placeholder="Enter your email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-[15px] outline-none transition focus:border-blue-500"
-            />
+            <div className="relative">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                <Mail size={18} />
+              </span>
+              <input
+                id="email"
+                type="email"
+                placeholder="Enter your email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="w-full rounded-md border border-gray-300 pl-10 pr-3 py-2 text-[15px] outline-none transition focus:border-blue-500"
+              />
+            </div>
           </div>
 
           {/* Password */}
@@ -92,6 +98,9 @@ const Login = () => {
               Password
             </label>
             <div className="relative">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                <Lock size={18} />
+              </span>
               <input
                 id="password"
                 type={showPassword ? "text" : "password"}
@@ -99,14 +108,16 @@ const Login = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-[15px] outline-none transition focus:border-blue-500"
+                className="w-full rounded-md border border-gray-300 pl-10 pr-9 py-2 text-[15px] outline-none transition focus:border-blue-500"
               />
-              <span
+              <button
+                type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer select-none text-lg"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                className="absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer select-none text-gray-500 hover:text-gray-700"
               >
-                {showPassword ? "🙈" : "👁️"}
-              </span>
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
             </div>
           </div>
 
@@ -127,8 +138,8 @@ const Login = () => {
 
         {/* Register Link */}
         <div className="mt-5 text-center text-neutral-700">
-          <span className="text-neutral-100">Don’t have an account? </span>
-          <Link to="/register" className="font-medium text-blue-100 underline-offset-2 hover:underline">
+          <span className="text-neutral-700">Don’t have an account? </span>
+          <Link to="/register" className="font-medium text-blue-600 underline-offset-2 hover:underline">
             Register
           </Link>
         </div>

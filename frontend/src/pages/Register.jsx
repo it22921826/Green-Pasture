@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { register } from '../api/userApi';
 import Hotel from '../assets/Hotel.jpg';
+import { User, Mail, Lock, Phone, MapPin, ListChecks, Eye, EyeOff } from 'lucide-react';
 
 const Register = () => {
   const [form, setForm] = useState({
@@ -104,39 +105,52 @@ const Register = () => {
           {/* Name */}
           <div className="mb-4">
             <label htmlFor="name" className="mb-1 block font-medium">Full Name</label>
-            <input
-              name="name"
-              id="name"
-              placeholder="Enter your name"
-              value={form.name}
-              onChange={handleChange}
-              required
-              pattern="[A-Za-z ]+"
-              title="Letters and spaces only"
-              className={`w-full rounded-md border px-3 py-2 text-[15px] outline-none transition focus:border-blue-500 ${fieldErrors.name ? 'border-red-400 focus:border-red-500' : 'border-gray-300'}`}
-            />
+            <div className="relative">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                <User size={18} />
+              </span>
+              <input
+                name="name"
+                id="name"
+                placeholder="Enter your name"
+                value={form.name}
+                onChange={handleChange}
+                required
+                pattern="[A-Za-z ]+"
+                title="Letters and spaces only"
+                className={`w-full rounded-md border pl-10 pr-3 py-2 text-[15px] outline-none transition focus:border-blue-500 ${fieldErrors.name ? 'border-red-400 focus:border-red-500' : 'border-gray-300'}`}
+              />
+            </div>
             {fieldErrors.name && <p className="mt-1 text-xs text-red-600">{fieldErrors.name}</p>}
           </div>
 
           {/* Email */}
           <div className="mb-4">
             <label htmlFor="email" className="mb-1 block font-medium">Email Address</label>
-            <input
-              name="email"
-              id="email"
-              type="email"
-              placeholder="example@email.com"
-              value={form.email}
-              onChange={handleChange}
-              required
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-[15px] outline-none transition focus:border-blue-500"
-            />
+            <div className="relative">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                <Mail size={18} />
+              </span>
+              <input
+                name="email"
+                id="email"
+                type="email"
+                placeholder="example@email.com"
+                value={form.email}
+                onChange={handleChange}
+                required
+                className="w-full rounded-md border border-gray-300 pl-10 pr-3 py-2 text-[15px] outline-none transition focus:border-blue-500"
+              />
+            </div>
           </div>
 
           {/* Password */}
           <div className="mb-4">
             <label htmlFor="password" className="mb-1 block font-medium">Password</label>
             <div className="relative">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                <Lock size={18} />
+              </span>
               <input
                 name="password"
                 id="password"
@@ -145,14 +159,15 @@ const Register = () => {
                 value={form.password}
                 onChange={handleChange}
                 required
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-[15px] outline-none transition focus:border-blue-500"
+                className="w-full rounded-md border border-gray-300 pl-10 pr-9 py-2 text-[15px] outline-none transition focus:border-blue-500"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer select-none text-lg"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                className="absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer select-none text-gray-500 hover:text-gray-700"
               >
-                {showPassword ? '🙈' : '👁️'}
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
           </div>
@@ -160,32 +175,42 @@ const Register = () => {
           {/* Phone */}
           <div className="mb-4">
             <label htmlFor="phone" className="mb-1 block font-medium">Phone Number</label>
-            <input
-              name="phone"
-              id="phone"
-              placeholder="Digits only (9-15)"
-              value={form.phone}
-              onChange={handleChange}
-              inputMode="numeric"
-              pattern="[0-9]{9,15}"
-              title="Phone must be 9-15 digits"
-              required
-              className={`w-full rounded-md border px-3 py-2 text-[15px] outline-none transition focus:border-blue-500 ${fieldErrors.phone ? 'border-red-400 focus:border-red-500' : 'border-gray-300'}`}
-            />
+            <div className="relative">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                <Phone size={18} />
+              </span>
+              <input
+                name="phone"
+                id="phone"
+                placeholder="Digits only (9-15)"
+                value={form.phone}
+                onChange={handleChange}
+                inputMode="numeric"
+                pattern="[0-9]{9,15}"
+                title="Phone must be 9-15 digits"
+                required
+                className={`w-full rounded-md border pl-10 pr-3 py-2 text-[15px] outline-none transition focus:border-blue-500 ${fieldErrors.phone ? 'border-red-400 focus:border-red-500' : 'border-gray-300'}`}
+              />
+            </div>
             {fieldErrors.phone && <p className="mt-1 text-xs text-red-600">{fieldErrors.phone}</p>}
           </div>
 
           {/* Address */}
           <div className="mb-4">
             <label htmlFor="address" className="mb-1 block font-medium">Address</label>
-            <input
-              name="address"
-              id="address"
-              placeholder="Your home address"
-              value={form.address}
-              onChange={handleChange}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-[15px] outline-none transition focus:border-blue-500"
-            />
+            <div className="relative">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                <MapPin size={18} />
+              </span>
+              <input
+                name="address"
+                id="address"
+                placeholder="Your home address"
+                value={form.address}
+                onChange={handleChange}
+                className="w-full rounded-md border border-gray-300 pl-10 pr-3 py-2 text-[15px] outline-none transition focus:border-blue-500"
+              />
+            </div>
           </div>
 
           {/* Role */}
@@ -206,15 +231,20 @@ const Register = () => {
           {/* Preferences */}
           <div className="mb-4">
             <label htmlFor="preferences" className="mb-1 block font-medium">Preferences</label>
-            <textarea
-              name="preferences"
-              id="preferences"
-              placeholder="Any special requests?"
-              value={form.preferences}
-              onChange={handleChange}
-              rows={3}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-[15px] outline-none transition focus:border-blue-500"
-            />
+            <div className="relative">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                <ListChecks size={18} />
+              </span>
+              <textarea
+                name="preferences"
+                id="preferences"
+                placeholder="Any special requests?"
+                value={form.preferences}
+                onChange={handleChange}
+                rows={3}
+                className="w-full rounded-md border border-gray-300 pl-10 pr-3 py-2 text-[15px] outline-none transition focus:border-blue-500"
+              />
+            </div>
           </div>
 
           {/* Submit */}

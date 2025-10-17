@@ -56,7 +56,7 @@ export default function Navbar() {
           <img
             src={logoImg}
             alt="GreenPasture"
-            className="w-10 h-10 object-contain"
+            className="w-10 h-10 rounded-full object-cover bg-white p-0.5 shadow-sm"
           />
           <span className="text-xl font-bold">GreenPasture</span>
         </Link>

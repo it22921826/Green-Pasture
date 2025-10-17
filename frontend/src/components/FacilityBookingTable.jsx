@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { formatCurrency } from '../utils/currency';
-import { getAllFacilityBookings, updateFacilityBooking, cancelFacilityBooking } from "../api/facilityApi";
+import { getAllFacilityBookings, updateFacilityBooking, cancelFacilityBooking, deleteFacilityBooking } from "../api/facilityApi";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { addBrandedHeader, addGeneratedLine } from '../utils/pdfHeader';
+import { decodeToken } from '../utils/authHelper';
 
 const FacilityBookingTable = ({ bookings: incoming }) => {
 	const [bookings, setBookings] = useState(incoming || []);
@@ -12,6 +13,11 @@ const FacilityBookingTable = ({ bookings: incoming }) => {
 	const [error, setError] = useState("");
 	const [actionId, setActionId] = useState(""); // row-level loading indicator
 	const [search, setSearch] = useState("");
+  const [selected, setSelected] = useState(new Set());
+
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  const user = token ? decodeToken(token) : null;
+  const role = (user?.role || user?.user?.role || '').toString();
 
 	useEffect(() => {
 		if (incoming && Array.isArray(incoming)) return; // use provided data
@@ -36,6 +42,7 @@ const FacilityBookingTable = ({ bookings: incoming }) => {
 
 	useEffect(() => {
 		setFiltered(bookings);
+		setSelected(new Set());
 	}, [bookings]);
 
 	useEffect(() => {
@@ -134,6 +141,48 @@ const FacilityBookingTable = ({ bookings: incoming }) => {
 		}
 	};
 
+	const toggleSelect = (id) => {
+		setSelected(prev => {
+			const next = new Set(prev);
+			if (next.has(id)) next.delete(id); else next.add(id);
+			return next;
+		});
+	};
+
+	const toggleSelectAll = () => {
+		setSelected(prev => {
+			if (prev.size === filtered.length) return new Set();
+			return new Set(filtered.map(b => b._id));
+		});
+	};
+
+	const removeSelected = async () => {
+		if (!role || !['Staff','Admin'].includes(role)) return;
+		const ids = Array.from(selected);
+		if (!ids.length) return alert('No facility bookings selected');
+		if (!window.confirm(`Delete ${ids.length} selected booking(s)? This cannot be undone.`)) return;
+		const token = localStorage.getItem('token');
+		if (!token) {
+			alert('Please log in as Staff/Admin to delete facility bookings.');
+			return;
+		}
+		// Optimistic remove
+		const prevRows = bookings;
+		setBookings(p => p.filter(r => !selected.has(r._id)));
+		setSelected(new Set());
+		// Execute in parallel and handle partial failures
+		const results = await Promise.allSettled(ids.map(id => deleteFacilityBooking(id, token)));
+		const failed = results.map((r, i) => ({ r, id: ids[i] })).filter(x => x.r.status === 'rejected');
+		if (failed.length > 0) {
+			const failedIds = new Set(failed.map(f => f.id));
+			const failedRows = prevRows.filter(r => failedIds.has(r._id));
+			setBookings(current => [...current, ...failedRows]);
+			const firstErr = failed[0].r.reason;
+			const msg = firstErr?.response?.data?.message || firstErr?.message || 'Some deletions failed';
+			alert(`${failed.length} of ${ids.length} deletion(s) failed: ${msg}`);
+		}
+	};
+
 	return (
 		<div className="mt-5 overflow-x-auto">
 			<div className="mb-3 flex flex-wrap items-center justify-between gap-3">
@@ -144,7 +193,26 @@ const FacilityBookingTable = ({ bookings: incoming }) => {
 					placeholder="Search facility bookings (reference, facility, type, guest, status)"
 					className="w-full max-w-xl rounded border border-neutral-300 px-3 py-2 text-sm shadow-sm focus:border-[#000B58] focus:outline-none"
 				/>
-				<div className="text-xs text-neutral-500">{search ? `${filtered.length} / ${bookings.length} shown` : `${bookings.length} total`}</div>
+				<div className="flex items-center gap-3">
+					<div className="text-xs text-neutral-500">{search ? `${filtered.length} / ${bookings.length} shown` : `${bookings.length} total`}</div>
+					{role && ['Staff','Admin'].includes(role) && (
+						<div className="flex items-center gap-2">
+							<label className="flex items-center gap-1 text-sm">
+								<input type="checkbox" onChange={toggleSelectAll} checked={selected.size>0 && selected.size===filtered.length} />
+								Select All
+							</label>
+							<button
+								type="button"
+								onClick={removeSelected}
+								disabled={selected.size === 0}
+								className="rounded bg-neutral-700 px-3 py-1 text-white shadow disabled:cursor-not-allowed disabled:opacity-60 hover:bg-neutral-800"
+								title="Delete selected facility bookings"
+							>
+								Delete selected
+							</button>
+						</div>
+					)}
+				</div>
 			</div>
 			<div className="mb-3 flex items-center justify-end">
 				<button
@@ -159,6 +227,9 @@ const FacilityBookingTable = ({ bookings: incoming }) => {
 			<table className="w-full overflow-hidden rounded-xl border border-neutral-200 bg-white text-left shadow">
 				<thead>
 					<tr className="bg-[#000B58] text-white">
+            {role && ['Staff','Admin'].includes(role) && (
+              <th className="px-5 py-3 text-sm font-bold">Select</th>
+            )}
 						<th className="px-5 py-3 text-sm font-bold">Reference</th>
 						<th className="px-5 py-3 text-sm font-bold">Facility</th>
 						<th className="px-5 py-3 text-sm font-bold">Type</th>
@@ -178,6 +249,11 @@ const FacilityBookingTable = ({ bookings: incoming }) => {
 							key={b._id || b.bookingReference || i}
 							className={i % 2 === 0 ? "bg-neutral-50 hover:bg-blue-50" : "bg-white hover:bg-blue-50"}
 						>
+                {role && ['Staff','Admin'].includes(role) && (
+                  <td className="px-5 py-3 text-sm text-neutral-800">
+                    <input type="checkbox" checked={selected.has(b._id)} onChange={() => toggleSelect(b._id)} />
+                  </td>
+                )}
 							<td className="px-5 py-3 text-sm text-neutral-800">{b.bookingReference || "-"}</td>
 							<td className="px-5 py-3 text-sm text-neutral-800">{b.facility?.name || b.facility || "-"}</td>
 							<td className="px-5 py-3 text-sm text-neutral-800">{b.facility?.type || "-"}</td>

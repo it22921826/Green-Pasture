@@ -19,6 +19,7 @@ import Rooms from './pages/Rooms';
 import RoomDetails from './pages/RoomDetails';
 import GuestPayment from './components/Payment';
 import RefundStatus from './pages/RefundStatus';
+import Reserved from './pages/Reserved';
 
 function App() {
   return (
@@ -33,7 +34,8 @@ function App() {
   <Route path="/book" element={<ProtectedRoute roles={["Guest","User"]}><BookingForm /></ProtectedRoute>} />
   <Route path="/facility-booking" element={<ProtectedRoute roles={["Guest","User","Staff","Admin"]}><FacilityBooking /></ProtectedRoute>} />
   <Route path="/my-bookings" element={<ProtectedRoute roles={["Guest","User"]}><MyBookings /></ProtectedRoute>} />
-        <Route path="/dashboard" element={<ProtectedRoute roles={["Staff","Admin"]}><StaffDashboard /></ProtectedRoute>} />
+  <Route path="/dashboard" element={<ProtectedRoute roles={["Staff","Admin"]}><StaffDashboard /></ProtectedRoute>} />
+  <Route path="/reserved" element={<ProtectedRoute roles={["Staff","Admin"]}><Reserved /></ProtectedRoute>} />
         <Route path="/staff-management" element={<ProtectedRoute roles={["Staff","Admin"]}><StaffManagement /></ProtectedRoute>} />
         <Route path="/feedback" element={<Feedback />} />
         <Route path="/rooms" element={<Rooms />} />

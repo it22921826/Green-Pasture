@@ -9,6 +9,7 @@ import AdminRefunds from '../components/AdminRefunds';
 import FacilityBookingTable from '../components/FacilityBookingTable';
 import Invoice from '../components/Invoice';
 import UsersTable from '../components/UsersTable';
+import FacilityBooking from './FacilityBooking';
 import { getRooms, createRoom, updateRoom, deleteRoom } from '../api/roomApi';
 
 const StaffDashboard = () => {
@@ -20,7 +21,7 @@ const StaffDashboard = () => {
   const [roomForm, setRoomForm] = useState({ roomNumber: '', type: 'Single', price: '', amenities: '', status: 'Available', photos: [], description: '', capacity: 2 });
   const [removePhotos, setRemovePhotos] = useState([]);
   const [editingRoom, setEditingRoom] = useState(null);
-  const [activeTab, setActiveTab] = useState('bookings'); // 'bookings' | 'facility' | 'rooms' | 'invoices' | 'users' | 'refunds'
+  const [activeTab, setActiveTab] = useState('bookings'); // 'bookings' | 'reserved' | 'facility' | 'rooms' | 'invoices' | 'users' | 'refunds' | 'manageFacilities'
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -152,11 +153,18 @@ const StaffDashboard = () => {
           >
             Refunds
           </button>
-          {/* Direct Facilities management navigation */}
           <button
-            onClick={() => window.location.href = '/facility-booking'}
-            className="rounded px-4 py-2 text-sm font-medium shadow bg-neutral-100 text-neutral-800 hover:bg-neutral-200"
-            title="Go to Facilities Management"
+            onClick={() => setActiveTab('reserved')}
+            className={`rounded px-4 py-2 text-sm font-medium shadow ${activeTab === 'reserved' ? 'bg-[#000B58] text-white' : 'bg-neutral-100 text-neutral-800 hover:bg-neutral-200'}`}
+            title="View reserved (pending) room bookings"
+          >
+            Reserved
+          </button>
+          {/* Facilities management within dashboard */}
+          <button
+            onClick={() => setActiveTab('manageFacilities')}
+            className={`rounded px-4 py-2 text-sm font-medium shadow ${activeTab === 'manageFacilities' ? 'bg-[#000B58] text-white' : 'bg-neutral-100 text-neutral-800 hover:bg-neutral-200'}`}
+            title="Manage Facilities"
           >
             Manage Facilities
           </button>
@@ -187,12 +195,35 @@ const StaffDashboard = () => {
           </>
         )}
 
+        {activeTab === 'reserved' && (
+          <>
+            <div className="mb-2 flex items-center justify-between">
+              <h3 className="text-xl font-semibold text-neutral-900">Reserved Bookings</h3>
+              <button onClick={downloadBookingsPdf} className="rounded bg-[#000B58] px-3 py-2 text-white shadow hover:bg-[#001050]">⬇️ Download Bookings PDF</button>
+            </div>
+            {loading ? (
+              <div className="my-8 text-center text-[18px] text-neutral-600">Loading reservations...</div>
+            ) : (
+              <BookingTable bookings={(bookings || []).filter(b => (b.status === 'PendingPayment' || b.status === 'Pending'))} showStatusControl={false} />
+            )}
+          </>
+        )}
+
         {/* Facility bookings table for Staff/Admin */}
         {activeTab === 'facility' && (
           <div className="mt-10">
             <h3 className="mb-4 text-xl font-semibold text-neutral-900">Facility Bookings</h3>
             <div className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm">
               <FacilityBookingTable />
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'manageFacilities' && (
+          <div className="mt-10">
+            <h3 className="mb-4 text-xl font-semibold text-neutral-900">Manage Facilities</h3>
+            <div className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm">
+              <FacilityBooking />
             </div>
           </div>
         )}

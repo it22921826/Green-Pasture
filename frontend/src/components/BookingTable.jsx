@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from 'react-router-dom';
 import { cancelBooking, setBookingStatus, deleteBooking } from "../api/bookingApi";
 import { decodeToken } from "../utils/authHelper";
 import RefundForm from './RefundForm';
 
-const BookingTable = ({ bookings: incoming }) => {
+const BookingTable = ({ bookings: incoming, showStatusControl = true }) => {
   const [rows, setRows] = useState(incoming || []);
   const [filtered, setFiltered] = useState(incoming || []);
   const [actionId, setActionId] = useState("");
@@ -14,7 +13,7 @@ const BookingTable = ({ bookings: incoming }) => {
   const token = localStorage.getItem('token');
   const user = token ? decodeToken(token) : null;
   const role = user?.role || user?.user?.role || ''; // handle nested user
-  const navigate = useNavigate();
+  
 
   useEffect(() => {
     const base = Array.isArray(incoming) ? incoming : [];
@@ -38,16 +37,19 @@ const BookingTable = ({ bookings: incoming }) => {
   }, [search, rows]);
 
   const cancel = async (id) => {
-    // Step 1: show refund form BEFORE cancelling; only proceed on submit
+    // Staff/Admin: cancel directly without refund form
+    if (role && ['Staff','Admin'].includes(role)) {
+      await performCancel(id);
+      return;
+    }
+    // Guests: show refund form BEFORE cancelling; only proceed on submit
     const booking = rows.find(r => r._id === id);
     if (!booking) return;
     setShowRefundFor(booking);
     // The actual cancellation will be performed in handleRefundSubmit
   };
 
-  const handleRefundSubmit = async () => {
-    if (!showRefundFor) return;
-    const id = showRefundFor._id;
+  const performCancel = async (id) => {
     const token = localStorage.getItem("token");
     setActionId(`cancel:${id}`);
     const prev = rows;
@@ -66,6 +68,12 @@ const BookingTable = ({ bookings: incoming }) => {
     } finally {
       setActionId('');
     }
+  };
+
+  const handleRefundSubmit = async () => {
+    if (!showRefundFor) return;
+    const id = showRefundFor._id;
+    await performCancel(id);
   };
 
   const remove = async (id) => {
@@ -137,7 +145,7 @@ const BookingTable = ({ bookings: incoming }) => {
           type="text"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          placeholder="Search bookings (guest, staff, room, status, requests)"
+          placeholder="Search bookings (guest, room, status, requests)"
           className="w-full max-w-md rounded border border-neutral-300 px-3 py-2 text-sm shadow-sm focus:border-[#000B58] focus:outline-none"
         />
         <div className="flex items-center gap-3">
@@ -174,7 +182,6 @@ const BookingTable = ({ bookings: incoming }) => {
             <th className="px-5 py-3 text-sm font-bold">Check-Out</th>
             <th className="px-5 py-3 text-sm font-bold">Status</th>
             <th className="px-5 py-3 text-sm font-bold">Guest</th>
-            <th className="px-5 py-3 text-sm font-bold">Staff</th>
             <th className="px-5 py-3 text-sm font-bold">Requests</th>
             <th className="px-5 py-3 text-sm font-bold">Actions</th>
           </tr>
@@ -192,11 +199,10 @@ const BookingTable = ({ bookings: incoming }) => {
               <td className="px-5 py-3 text-sm text-neutral-800">{b.checkOut && new Date(b.checkOut).toLocaleDateString()}</td>
               <td className={`px-5 py-3 text-sm font-semibold ${statusColorClass(b.status)}`}>{friendlyStatus(b.status)}</td>
               <td className="px-5 py-3 text-sm text-neutral-800">{b.guest?.name || b.guest}</td>
-              <td className="px-5 py-3 text-sm text-neutral-800">{b.staff?.name || b.staff}</td>
               <td className="px-5 py-3 text-sm text-neutral-800">{b.specialRequests || "-"}</td>
               <td className="px-5 py-3 text-sm text-neutral-800">
                 <div className="flex flex-wrap gap-2 items-center">
-                  {role && ['Staff','Admin'].includes(role) && b.status !== 'Cancelled' && (
+                  {showStatusControl && role && ['Staff','Admin'].includes(role) && b.status !== 'Cancelled' && (
                     <div className="relative">
                       <select
                         value={mapInternalToUiStatus(b.status)}
@@ -230,21 +236,14 @@ const BookingTable = ({ bookings: incoming }) => {
                     >
                       {actionId === `cancel:${b._id}` ? "Cancelling..." : "Cancel"}
                     </button>
-                  <button
-                    type="button"
-                    onClick={() => navigate(`/refund-status?bookingId=${b._id}`)}
-                    className="rounded bg-teal-600 px-3 py-1 text-white shadow hover:bg-teal-700"
-                    title="Open refund status"
-                  >
-                    Refund Status
-                  </button>
+                  
                 </div>
               </td>
             </tr>
           ))}
         </tbody>
       </table>
-      {showRefundFor && (
+      {showRefundFor && !(role && ['Staff','Admin'].includes(role)) && (
         <RefundForm
           booking={showRefundFor}
           onClose={() => setShowRefundFor(null)}

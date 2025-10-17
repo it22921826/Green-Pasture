@@ -145,15 +145,24 @@ const Rooms = () => {
                       <span className="text-xs text-gray-500">+{room.amenities.length - 3} more</span>
                     )}
                   </div>
-                  <div className="mt-3 flex items-center justify-end">
+                  <div className="mt-3 flex items-center justify-end gap-2">
                     {role !== 'staff' && role !== 'admin' && (
-                      <button
-                        type="button"
-                        className="px-3 py-1.5 text-sm rounded bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-400"
-                        onClick={() => setSelectedRoom(room)}
-                      >
-                        Book
-                      </button>
+                      <>
+                        <button
+                          type="button"
+                          className="px-3 py-1.5 text-sm rounded bg-emerald-600 text-white hover:bg-emerald-700 disabled:bg-gray-400"
+                          onClick={() => setSelectedRoom({ ...room, __mode: 'reserve' })}
+                        >
+                          Reserve
+                        </button>
+                        <button
+                          type="button"
+                          className="px-3 py-1.5 text-sm rounded bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-400"
+                          onClick={() => setSelectedRoom({ ...room, __mode: 'book' })}
+                        >
+                          Book
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>
@@ -167,7 +176,7 @@ const Rooms = () => {
             <div className="relative w-full max-w-lg">
               <button onClick={closeForm} className="absolute -top-2 -right-2 z-10 rounded-full bg-white px-3 py-1 text-sm shadow">Close</button>
               <div className="rounded-xl bg-white shadow-2xl">
-                <BookingForm roomNumber={selectedRoom.roomNumber} roomPrice={selectedRoom.price} onSuccess={handleBookingSuccess} />
+                <BookingForm roomNumber={selectedRoom.roomNumber} roomPrice={selectedRoom.price} mode={selectedRoom.__mode || 'book'} onSuccess={handleBookingSuccess} />
               </div>
             </div>
           </div>

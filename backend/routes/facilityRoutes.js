@@ -24,7 +24,7 @@ router.get('/bookings/my', protect, getMyFacilityBookings);
 router.get('/bookings/all', protect, authorizeRoles('Admin', 'Staff'), getAllFacilityBookings);
 router.put('/bookings/:id', protect, updateFacilityBooking);
 router.patch('/bookings/:id/cancel', protect, cancelFacilityBooking);
-router.delete('/bookings/:id', protect, authorizeRoles('Admin'), deleteFacilityBooking);
+router.delete('/bookings/:id', protect, authorizeRoles('Admin', 'Staff'), deleteFacilityBooking);
 router.post('/bookings/:id/mark-paid', protect, markFacilityBookingPaid);
 
 // Facility routes

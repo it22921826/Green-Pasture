@@ -323,7 +323,7 @@ export const cancelFacilityBooking = async (req, res) => {
   }
 };
 
-// Delete facility booking (Admin only)
+// Delete facility booking (Admin/Staff)
 export const deleteFacilityBooking = async (req, res) => {
   try {
     const booking = await FacilityBooking.findById(req.params.id);
@@ -331,8 +331,8 @@ export const deleteFacilityBooking = async (req, res) => {
       return res.status(404).json({ message: 'Booking not found' });
     }
 
-    // Only allow admin to delete bookings
-    if (!['Admin'].includes(req.user.role)) {
+    // Allow Admin or Staff to delete bookings
+    if (!['Admin','Staff'].includes(req.user.role)) {
       return res.status(403).json({ message: 'Not authorized to delete this booking' });
     }
 

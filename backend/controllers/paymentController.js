@@ -3,6 +3,7 @@ import nodemailer from "nodemailer";
 import { formatCurrency } from "../utils/currency.js";
 import Invoice from "../models/invoice.js";
 import { broadcastEvent } from "../index.js";
+import path from 'path';
 const formatAmount = (v) => formatCurrency(v, { withSymbol: true });
 
 // Controller for manual payment submission
@@ -31,10 +32,11 @@ export const submitManualPayment = async (req, res) => {
       const lastNumber = parseInt((last?.invoiceNumber || 'INV000').replace('INV',''), 10) || 0;
       return `INV${String(lastNumber + 1).padStart(3,'0')}`;
     })();
-    const invoice = await Invoice.create({ invoiceNumber: nextNum, customerName, email, amount, status: 'pending' });
+  const invoice = await Invoice.create({ invoiceNumber: nextNum, customerName, email, amount, status: 'pending' });
 
     // Save payment to DB
     const payment = await Payment.create({
+      invoiceId: invoice._id,
       customerName,
       amount,
       email,
@@ -91,5 +93,44 @@ export const submitManualPayment = async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ success: false, message: "Payment submission failed", error: err.message });
+  }
+};
+
+// Fetch payment proof by invoice id
+export const getPaymentProofByInvoice = async (req, res) => {
+  try {
+    const { id } = req.params; // invoice id
+    // First try direct link
+    let payment = await Payment.findOne({ invoiceId: id }).lean();
+    // Fallback for historical data: match by invoice email+amount
+    if (!payment) {
+      const invoice = await Invoice.findById(id).lean();
+      if (invoice?.email && typeof invoice.amount === 'number') {
+        payment = await Payment.findOne({ email: invoice.email, amount: invoice.amount })
+          .sort({ date: -1, _id: -1 })
+          .lean();
+      }
+    }
+    if (!payment || !payment.paymentProof) {
+      return res.status(404).json({ success: false, message: 'No payment proof found for this invoice' });
+    }
+    // If stored as base64 data URI, return directly; else construct static URL
+    const isDataUri = payment.paymentProof.startsWith('data:');
+    const proof = isDataUri
+      ? payment.paymentProof
+      : `${req.protocol}://${req.get('host')}/uploads/${payment.paymentProof}`;
+    // Extract contentType for frontend rendering
+    let contentType = undefined;
+    if (isDataUri) {
+      const m = payment.paymentProof.match(/^data:([^;]+);base64,/);
+      if (m) contentType = m[1];
+    } else {
+      const ext = path.extname(payment.paymentProof || '').toLowerCase();
+      const map = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.pdf': 'application/pdf' };
+      contentType = map[ext];
+    }
+    res.json({ success: true, proof, contentType });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
 };

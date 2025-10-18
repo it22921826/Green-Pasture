@@ -45,3 +45,8 @@ export const approveInvoice = async (id) => {
   const res = await axios.patch(`/invoices/${id}/approve`);
   return res.data;
 };
+
+export const getInvoiceProof = async (id) => {
+  const res = await axios.get(`/invoices/${id}/proof`);
+  return res.data; // { success, proof }
+};

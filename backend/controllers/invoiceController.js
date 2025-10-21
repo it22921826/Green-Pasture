@@ -105,3 +105,49 @@ export const approveInvoice = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+// PATCH /invoices/:id/reject -> mark invoice as rejected
+export const rejectInvoice = async (req, res) => {
+  try {
+    const invoice = await Invoice.findById(req.params.id);
+    if (!invoice) return res.status(404).json({ message: 'Invoice not found' });
+    if (invoice.status === 'rejected') {
+      return res.json({ message: 'Invoice already rejected', invoice });
+    }
+    invoice.status = 'rejected';
+    // ensure no paidAt if rejecting
+    invoice.paidAt = undefined;
+    await invoice.save();
+    // Send rejection email (exact requested format)
+    if (invoice.email) {
+      try {
+        const transporter = nodemailer.createTransport({
+          service: 'Gmail',
+          auth: { user: process.env.SENDER_EMAIL, pass: process.env.EMAIL_PASSWORD }
+        });
+        await transporter.sendMail({
+          from: process.env.SENDER_EMAIL,
+          to: invoice.email,
+          subject: `Invoice ${invoice.invoiceNumber} Rejected`,
+          html: `
+            <h2>Invoice Rejected</h2>
+            <p>Dear ${invoice.customerName},</p>
+            <p>Unfortunately, your payment could not be approved. Details:</p>
+            <ul>
+              <li>Invoice Number: ${invoice.invoiceNumber}</li>
+              <li>Amount: ${formatAmount(invoice.amount)}</li>
+              <li>Status: Rejected</li>
+              <li>Rejected At: ${new Date().toLocaleString()}</li>
+            </ul>
+            <p>Please contact support for further assistance.</p>
+          `
+        });
+      } catch (mailErr) {
+        console.error('[rejectInvoice] Email send failed:', mailErr);
+      }
+    }
+    res.json({ message: 'Invoice rejected', invoice });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};

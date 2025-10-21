@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { formatCurrency } from "../utils/currency";
-import { fetchInvoices, deleteInvoice, approveInvoice, getInvoiceProof } from "../api/invoiceAPI";
+import { fetchInvoices, deleteInvoice, approveInvoice, rejectInvoice, getInvoiceProof } from "../api/invoiceAPI";
 import logo from '../assets/Logo.png';
 
 const Invoice = () => {
@@ -188,6 +188,8 @@ const Invoice = () => {
               <td className="px-5 py-3 text-sm">
                 {inv.status === 'approved' || inv.status === 'paid' ? (
                   <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-700">Approved</span>
+                ) : inv.status === 'rejected' ? (
+                  <span className="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-700">Rejected</span>
                 ) : (
                   <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700">Pending</span>
                 )}
@@ -225,11 +227,24 @@ const Invoice = () => {
               </td>
               <td className="px-5 py-3 text-sm text-neutral-800">
                 <div className="flex flex-wrap items-center justify-center gap-2">
-                  {!(inv.status === 'approved' || inv.status === 'paid') && (
+                  {!(inv.status === 'approved' || inv.status === 'paid' || inv.status === 'rejected') && (
                     <button
                       onClick={() => handleApprove(inv)}
                       className="rounded bg-blue-600 px-3 py-1 text-white shadow hover:bg-blue-700"
                     >Approve</button>
+                  )}
+                  {!(inv.status === 'approved' || inv.status === 'paid' || inv.status === 'rejected') && (
+                    <button
+                      onClick={async () => {
+                        try {
+                          await rejectInvoice(inv._id);
+                          setInvoices(prev => prev.map(i => i._id === inv._id ? { ...i, status: 'rejected' } : i));
+                        } catch (err) {
+                          setError('Failed to reject invoice');
+                        }
+                      }}
+                      className="rounded bg-red-600 px-3 py-1 text-white shadow hover:bg-red-700"
+                    >Reject</button>
                   )}
                   <button
                     onClick={() => downloadSingle(inv)}
@@ -238,8 +253,12 @@ const Invoice = () => {
                     PDF
                   </button>
                   <button
-                    onClick={() => handleDelete(inv._id)}
-                    className="rounded bg-red-600 px-3 py-1 text-white shadow hover:bg-red-700"
+                    onClick={() => {
+                      if (window.confirm('Delete this invoice? This action cannot be undone.')) {
+                        handleDelete(inv._id);
+                      }
+                    }}
+                    className="rounded bg-neutral-600 px-3 py-1 text-white shadow hover:bg-neutral-700"
                   >
                     Delete
                   </button>
@@ -274,7 +293,7 @@ const Invoice = () => {
             )}
             <div className="mt-4 flex justify-end gap-2">
               <button onClick={() => { setProofOpen(false); setProofFor(null); setProofSrc(''); setProofType(''); }} className="rounded bg-neutral-200 px-3 py-1 text-sm hover:bg-neutral-300">Close</button>
-              {proofFor && !(invoices.find(i=>i._id===proofFor)?.status === 'approved' || invoices.find(i=>i._id===proofFor)?.status === 'paid') && (
+              {proofFor && !(invoices.find(i=>i._id===proofFor)?.status === 'approved' || invoices.find(i=>i._id===proofFor)?.status === 'paid' || invoices.find(i=>i._id===proofFor)?.status === 'rejected') && (
                 <button
                   onClick={async () => {
                     try {
@@ -289,6 +308,22 @@ const Invoice = () => {
                   }}
                   className="rounded bg-blue-600 px-3 py-1 text-white shadow hover:bg-blue-700"
                 >Approve</button>
+              )}
+              {proofFor && !(invoices.find(i=>i._id===proofFor)?.status === 'approved' || invoices.find(i=>i._id===proofFor)?.status === 'paid' || invoices.find(i=>i._id===proofFor)?.status === 'rejected') && (
+                <button
+                  onClick={async () => {
+                    try {
+                      await rejectInvoice(proofFor);
+                      setInvoices(prev => prev.map(i => i._id === proofFor ? { ...i, status: 'rejected' } : i));
+                      setProofOpen(false);
+                      setProofFor(null);
+                      setProofSrc('');
+                    } catch (err) {
+                      setError('Failed to reject invoice');
+                    }
+                  }}
+                  className="rounded bg-red-600 px-3 py-1 text-white shadow hover:bg-red-700"
+                >Reject</button>
               )}
             </div>
           </div>

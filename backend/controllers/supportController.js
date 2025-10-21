@@ -44,11 +44,18 @@ export const updateSupportStatus = async (req, res) => {
     if (!['Open', 'Resolved', 'Cancelled'].includes(status)) {
       return res.status(400).json({ message: 'Invalid status' });
     }
-    const updated = await SupportMessage.findByIdAndUpdate(
-      id,
-      { status },
-      { new: true }
-    );
+    // When resolving (approving refund), ensure a proof image was provided in the original message
+    if (status === 'Resolved') {
+      const msg = await SupportMessage.findById(id).select('message');
+      if (!msg) return res.status(404).json({ message: 'Not found' });
+      const text = String(msg.message || '');
+      const hasDataUri = /Attachment\s*\(base64\)\s*:\s*data:[^;]+;base64,/i.test(text) || /data:[^;]+;base64,/i.test(text);
+      const hasUploadUrl = /\/uploads\//i.test(text);
+      if (!hasDataUri && !hasUploadUrl) {
+        return res.status(400).json({ message: 'Cannot approve refund: no proof image attached.' });
+      }
+    }
+    const updated = await SupportMessage.findByIdAndUpdate(id, { status }, { new: true });
     if (!updated) return res.status(404).json({ message: 'Not found' });
     return res.json(updated);
   } catch (err) {

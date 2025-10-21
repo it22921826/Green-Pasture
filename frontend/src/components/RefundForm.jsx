@@ -18,6 +18,7 @@ const RefundForm = ({ booking, onClose, onSubmit }) => {
   });
   const [attachment, setAttachment] = useState(null); // File
   const [attachmentPreview, setAttachmentPreview] = useState(''); // data URL for preview
+  const [confirm, setConfirm] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -49,12 +50,59 @@ const RefundForm = ({ booking, onClose, onSubmit }) => {
     setErrors(prev => ({ ...prev, [name]: '' }));
   };
 
+  const validators = {
+    accountName: (val) => {
+      const v = String(val || '').trim();
+      if (!v) return 'Account name is required';
+      if (!/^[A-Za-z][A-Za-z .'-]{2,49}$/.test(v)) return 'Use 3-50 letters (A-Z) and spaces only';
+      return '';
+    },
+    accountNumber: (val) => {
+      const v = String(val || '').trim();
+      if (!v) return 'Account number is required';
+      if (!/^\d{10,20}$/.test(v)) return 'Account number must be 10-20 digits';
+      return '';
+    },
+    bankName: (val) => {
+      const v = String(val || '').trim();
+      if (!v) return 'Bank name is required';
+      if (!/^[A-Za-z][A-Za-z ]{2,49}$/.test(v)) return 'Use 3-50 letters and spaces only';
+      return '';
+    },
+    branch: (val) => {
+      const v = String(val || '').trim();
+      if (!v) return 'Branch is required';
+      if (!/^[A-Za-z][A-Za-z ]{2,49}$/.test(v)) return 'Use 3-50 letters and spaces only';
+      return '';
+    },
+    contactEmail: (val) => {
+      const v = String(val || '').trim();
+      if (!v) return 'Contact email is required';
+      if (!/\S+@\S+\.\S+/.test(v)) return 'Enter a valid email address';
+      return '';
+    },
+    contactPhone: (val) => {
+      const v = String(val || '').trim();
+      if (!/^0\d{9}$/.test(v)) return 'Enter a valid phone (10 digits, starts with 0)';
+      return '';
+    },
+  };
+
+  const handleBlur = (e) => {
+    const { name, value } = e.target;
+    if (validators[name]) {
+      const msg = validators[name](value);
+      if (msg) setErrors(prev => ({ ...prev, [name]: msg }));
+    }
+  };
+
   const handleFile = (e) => {
     const file = e.target.files && e.target.files[0];
     setAttachment(file || null);
     if (file) {
       // Validate file type and size (max 5 MB)
-      if (!file.type.startsWith('image/')) {
+      const allowed = ['image/jpeg','image/png','image/webp','image/jpg'];
+      if (!allowed.includes(file.type)) {
         setErrors(prev => ({ ...prev, attachment: 'Only image files are allowed' }));
         setAttachment(null);
         setAttachmentPreview('');
@@ -80,20 +128,16 @@ const RefundForm = ({ booking, onClose, onSubmit }) => {
   const validateDigits = (val) => /^\d+$/.test(String(val || '').trim());
   const validateAll = () => {
     const next = {};
-    if (!form.accountName?.trim()) next.accountName = 'Account name is required';
-    const accNo = String(form.accountNumber || '').trim();
-    if (!accNo) next.accountNumber = 'Account number is required';
-    else if (!validateDigits(accNo)) next.accountNumber = 'Account number must be digits only';
-    else if (accNo.length < 6 || accNo.length > 20) next.accountNumber = 'Account number must be 6-20 digits';
-    if (!form.bankName?.trim()) next.bankName = 'Bank name is required';
-    if (!form.contactEmail?.trim()) next.contactEmail = 'Contact email is required';
-    else if (!validateEmail(form.contactEmail)) next.contactEmail = 'Enter a valid email address';
-    const phone = String(form.contactPhone || '').trim();
-    if (phone && (!validateDigits(phone) || phone.length < 7 || phone.length > 15)) {
-      next.contactPhone = 'Enter a valid phone number (7-15 digits)';
-    }
+    // Strict field validations
+    const an = validators.accountName(form.accountName); if (an) next.accountName = an;
+    const ano = validators.accountNumber(form.accountNumber); if (ano) next.accountNumber = ano;
+    const bn = validators.bankName(form.bankName); if (bn) next.bankName = bn;
+    const br = validators.branch(form.branch); if (br) next.branch = br;
+    const em = validators.contactEmail(form.contactEmail); if (em) next.contactEmail = em;
+    const ph = validators.contactPhone(form.contactPhone); if (ph) next.contactPhone = ph;
     // Attachment is required for submission
     if (!attachmentPreview) next.attachment = 'Please upload an image';
+    if (!confirm) next.confirm = 'Please confirm the details are correct';
     return next;
   };
 
@@ -195,31 +239,32 @@ const RefundForm = ({ booking, onClose, onSubmit }) => {
           <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <label className="block text-sm font-medium">Account Name</label>
-              <input name="accountName" onChange={handleChange} value={form.accountName} className={`w-full rounded border px-3 py-2 ${errors.accountName ? 'border-red-400' : ''}`} placeholder="As per bank records" required aria-invalid={!!errors.accountName} />
+              <input name="accountName" onChange={handleChange} onBlur={handleBlur} value={form.accountName} className={`w-full rounded border px-3 py-2 ${errors.accountName ? 'border-red-400' : ''}`} placeholder="As per bank records" required aria-invalid={!!errors.accountName} minLength={3} maxLength={50} autoComplete="name" />
               {errors.accountName && <div className="mt-1 text-xs text-red-600">{errors.accountName}</div>}
             </div>
             <div>
               <label className="block text-sm font-medium">Account Number</label>
-              <input name="accountNumber" onChange={handleChange} value={form.accountNumber} className={`w-full rounded border px-3 py-2 ${errors.accountNumber ? 'border-red-400' : ''}`} placeholder="1234567890" required aria-invalid={!!errors.accountNumber} maxLength={20} />
+              <input name="accountNumber" onChange={(e)=>{ if (/^\d*$/.test(e.target.value)) handleChange(e); }} onBlur={handleBlur} value={form.accountNumber} className={`w-full rounded border px-3 py-2 ${errors.accountNumber ? 'border-red-400' : ''}`} placeholder="1234567890" required aria-invalid={!!errors.accountNumber} inputMode="numeric" pattern="\d*" minLength={10} maxLength={20} autoComplete="off" />
               {errors.accountNumber && <div className="mt-1 text-xs text-red-600">{errors.accountNumber}</div>}
             </div>
             <div>
               <label className="block text-sm font-medium">Bank Name</label>
-              <input name="bankName" onChange={handleChange} value={form.bankName} className={`w-full rounded border px-3 py-2 ${errors.bankName ? 'border-red-400' : ''}`} placeholder="ABC Bank" required aria-invalid={!!errors.bankName} />
+              <input name="bankName" onChange={(e)=>{ e.target.value = e.target.value.replace(/[^A-Za-z ]+/g,''); handleChange(e); }} onBlur={handleBlur} value={form.bankName} className={`w-full rounded border px-3 py-2 ${errors.bankName ? 'border-red-400' : ''}`} placeholder="ABC Bank" required aria-invalid={!!errors.bankName} minLength={3} maxLength={50} pattern="[A-Za-z ]+" />
               {errors.bankName && <div className="mt-1 text-xs text-red-600">{errors.bankName}</div>}
             </div>
             <div>
               <label className="block text-sm font-medium">Branch</label>
-              <input name="branch" onChange={handleChange} value={form.branch} className="w-full rounded border px-3 py-2" placeholder="Main Branch" />
+              <input name="branch" onChange={(e)=>{ e.target.value = e.target.value.replace(/[^A-Za-z ]+/g,''); handleChange(e); }} onBlur={handleBlur} value={form.branch} className={`w-full rounded border px-3 py-2 ${errors.branch ? 'border-red-400' : ''}`} placeholder="Main Branch" required aria-invalid={!!errors.branch} minLength={3} maxLength={50} pattern="[A-Za-z ]+" />
+              {errors.branch && <div className="mt-1 text-xs text-red-600">{errors.branch}</div>}
             </div>
             <div>
               <label className="block text-sm font-medium">Contact Email</label>
-              <input name="contactEmail" type="email" onChange={handleChange} value={form.contactEmail} className={`w-full rounded border px-3 py-2 ${errors.contactEmail ? 'border-red-400' : ''}`} placeholder="you@example.com" required aria-invalid={!!errors.contactEmail} />
+              <input name="contactEmail" type="email" onChange={handleChange} onBlur={handleBlur} value={form.contactEmail} className={`w-full rounded border px-3 py-2 ${errors.contactEmail ? 'border-red-400' : ''}`} placeholder="you@example.com" required aria-invalid={!!errors.contactEmail} autoComplete="email" />
               {errors.contactEmail && <div className="mt-1 text-xs text-red-600">{errors.contactEmail}</div>}
             </div>
             <div>
               <label className="block text-sm font-medium">Contact Phone</label>
-              <input name="contactPhone" onChange={handleChange} value={form.contactPhone} className={`w-full rounded border px-3 py-2 ${errors.contactPhone ? 'border-red-400' : ''}`} placeholder="0771234567" aria-invalid={!!errors.contactPhone} />
+              <input name="contactPhone" onChange={(e)=>{ if (/^\d*$/.test(e.target.value)) handleChange(e); }} onBlur={handleBlur} value={form.contactPhone} className={`w-full rounded border px-3 py-2 ${errors.contactPhone ? 'border-red-400' : ''}`} placeholder="0771234567" required aria-invalid={!!errors.contactPhone} inputMode="numeric" pattern="0\d{9}" minLength={10} maxLength={10} autoComplete="tel" />
               {errors.contactPhone && <div className="mt-1 text-xs text-red-600">{errors.contactPhone}</div>}
             </div>
             <div className="sm:col-span-2">
@@ -233,6 +278,14 @@ const RefundForm = ({ booking, onClose, onSubmit }) => {
               )}
             </div>
           </div>
+
+          <div className="mt-3 flex items-start gap-2">
+            <input id="confirm" type="checkbox" checked={confirm} onChange={(e)=>{ setConfirm(e.target.checked); setErrors(prev=>({ ...prev, confirm: '' })); }} className="mt-1" />
+            <label htmlFor="confirm" className="text-sm text-neutral-700">
+              I confirm the provided bank details and contact information are correct. I understand that refunds are processed at 70% of the total as per policy.
+            </label>
+          </div>
+          {errors.confirm && <div className="mt-1 text-xs text-red-600">{errors.confirm}</div>}
 
           {error && <div className="mt-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
           {success && <div className="mt-3 rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">{success}</div>}

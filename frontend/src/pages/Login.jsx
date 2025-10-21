@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import Hotel from "../assets/Hotel.jpg";
 import { useNavigate, Link } from "react-router-dom";
 import { login, resendOtp as apiResendOtp, verifyOtp as apiVerifyOtp } from "../api/userApi"; // Ensure API is defined
+import showToast from "../utils/toast";
 import { decodeToken, hasRole } from "../utils/authHelper";
 import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 
@@ -14,6 +15,13 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [otp, setOtp] = useState("");
   const [verifying, setVerifying] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+
+  React.useEffect(() => {
+    if (cooldown <= 0) return;
+    const t = setInterval(() => setCooldown((c) => (c > 0 ? c - 1 : 0)), 1000);
+    return () => clearInterval(t);
+  }, [cooldown]);
 
   const navigate = useNavigate();
 
@@ -60,7 +68,8 @@ const Login = () => {
     setError("");
     setVerifying(true);
     try {
-      await apiVerifyOtp(email.trim(), otp.trim());
+  await apiVerifyOtp(email.trim(), otp.trim());
+  showToast('Email verified successfully', 'success');
       // On successful verification, automatically attempt login again
       const { data } = await login({ email, password });
       if (!data || !data.token) throw new Error("Invalid response from server. Token missing.");
@@ -74,6 +83,7 @@ const Login = () => {
     } catch (err) {
       const msg = err?.response?.data?.message || err?.message || "Verification failed";
       setError(msg);
+      showToast(msg, 'error');
     } finally {
       setVerifying(false);
     }
@@ -127,18 +137,20 @@ const Login = () => {
               </button>
               <button
                 type="button"
-                className="text-blue-700 hover:underline"
+                className={`text-blue-700 hover:underline ${cooldown>0 ? 'opacity-50 pointer-events-none' : ''}`}
                 onClick={async()=>{
                   try {
-                    if (!email) { setError('Please enter your email first.'); return; }
+                    if (!email) { const m='Please enter your email first.'; setError(m); showToast(m,'error'); return; }
+                    if (cooldown>0) return;
                     await apiResendOtp(email);
-                    alert('OTP resent');
+                    showToast('OTP resent', 'success');
+                    setCooldown(30);
                   } catch(e){
-                    alert(e?.response?.data?.message || 'Failed to resend');
+                    showToast(e?.response?.data?.message || 'Failed to resend', 'error');
                   }
                 }}
               >
-                Resend OTP
+                {cooldown>0 ? `Resend in ${cooldown}s` : 'Resend OTP'}
               </button>
             </div>
           </div>

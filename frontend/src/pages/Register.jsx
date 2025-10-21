@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { register, verifyOtp as apiVerifyOtp, resendOtp as apiResendOtp } from '../api/userApi';
 import Hotel from '../assets/Hotel.jpg';
 import { User, Mail, Lock, Phone, MapPin, ListChecks, Eye, EyeOff } from 'lucide-react';
+import showToast from '../utils/toast';
 
 const Register = () => {
   const [form, setForm] = useState({
@@ -21,6 +22,13 @@ const Register = () => {
   const [step, setStep] = useState('form'); // form | otp
   const [otp, setOtp] = useState('');
   const [pendingEmail, setPendingEmail] = useState('');
+  const [cooldown, setCooldown] = useState(0);
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const t = setInterval(() => setCooldown((c)=> (c>0? c-1 : 0)), 1000);
+    return () => clearInterval(t);
+  }, [cooldown]);
 
   const navigate = useNavigate();
 
@@ -83,19 +91,24 @@ const Register = () => {
     try {
       const resp = await apiVerifyOtp(pendingEmail, otp);
       if (resp?.data) {
+        showToast('Email verified successfully', 'success');
         navigate('/login');
       }
     } catch (err) {
-      setError(err?.response?.data?.message || err?.message || 'Verification failed');
+      const msg = err?.response?.data?.message || err?.message || 'Verification failed';
+      setError(msg);
+      showToast(msg, 'error');
     }
   };
 
   const resend = async () => {
     try {
+      if (cooldown>0) return;
       await apiResendOtp(pendingEmail);
-      alert('OTP resent');
+      showToast('OTP resent', 'success');
+      setCooldown(30);
     } catch (err) {
-      alert(err?.response?.data?.message || err?.message || 'Failed to resend OTP');
+      showToast(err?.response?.data?.message || err?.message || 'Failed to resend OTP', 'error');
     }
   };
 
@@ -287,7 +300,7 @@ const Register = () => {
             <div className="mb-4 text-center text-sm text-neutral-700">We sent a 6-digit code to {pendingEmail}. Enter it below to verify your account.</div>
             <input value={otp} onChange={(e)=>setOtp(e.target.value.replace(/\D/g,''))} maxLength={6} inputMode="numeric" placeholder="Enter OTP" className="mb-3 w-full rounded-md border px-3 py-2 text-[15px] outline-none focus:border-blue-500" />
             <div className="flex items-center justify-between">
-              <button type="button" onClick={resend} className="text-sm text-blue-700 hover:underline">Resend OTP</button>
+              <button type="button" onClick={resend} className={`text-sm text-blue-700 hover:underline ${cooldown>0 ? 'opacity-50 pointer-events-none' : ''}`}>{cooldown>0 ? `Resend in ${cooldown}s` : 'Resend OTP'}</button>
               <div className="flex gap-2">
                 <button type="button" onClick={()=>setStep('form')} className="rounded bg-neutral-200 px-4 py-2 hover:bg-neutral-300">Back</button>
                 <button type="submit" className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">Verify</button>

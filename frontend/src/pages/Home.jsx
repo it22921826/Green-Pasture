@@ -27,6 +27,7 @@ const Home = () => {
   const hotel = Hotel;
 
   const [supportOpen, setSupportOpen] = React.useState(false);
+  const isLoggedIn = Boolean(localStorage.getItem('token'));
 
   return (
     <div
@@ -52,25 +53,27 @@ const Home = () => {
          
         </p>
 
-        <div className="mb-8 flex justify-center gap-6">
-          {[
-            { to: "/login", label: "Login", variant: "primary" },
-            { to: "/register", label: "Register", variant: "success" },
-            { to: "/dashboard", label: "Dashboard", variant: "primary" },
-          ].map((btn) => (
-            <Link
-              key={btn.to}
-              to={btn.to}
-              className={
-                btn.variant === "success"
-                  ? "rounded-xl bg-green-600 px-9 py-3 text-lg font-bold text-white shadow-lg transition hover:scale-[1.03] hover:bg-green-700"
-                  : "rounded-xl bg-[#000B58] px-9 py-3 text-lg font-bold text-white shadow-lg transition hover:scale-[1.03]"
-              }
-            >
-              {btn.label}
-            </Link>
-          ))}
-        </div>
+        {!isLoggedIn && (
+          <div className="mb-8 flex justify-center gap-6">
+            {[
+              { to: "/login", label: "Login", variant: "primary" },
+              { to: "/register", label: "Register", variant: "success" },
+              { to: "/dashboard", label: "Dashboard", variant: "primary" },
+            ].map((btn) => (
+              <Link
+                key={btn.to}
+                to={btn.to}
+                className={
+                  btn.variant === "success"
+                    ? "rounded-xl bg-green-600 px-9 py-3 text-lg font-bold text-white shadow-lg transition hover:scale-[1.03] hover:bg-green-700"
+                    : "rounded-xl bg-[#000B58] px-9 py-3 text-lg font-bold text-white shadow-lg transition hover:scale-[1.03]"
+                }
+              >
+                {btn.label}
+              </Link>
+            ))}
+          </div>
+        )}
 
         {/* Hero image removed (background now fills page) */}
 

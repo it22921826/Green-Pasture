@@ -36,6 +36,10 @@ export const createStaff = async (req, res) => {
     res.status(201).json(savedStaff);
   } catch (error) {
     console.error('[staffController] createStaff error:', error.message);
+    if (error.name === 'ValidationError') {
+      const details = Object.values(error.errors).map(e => e.message);
+      return res.status(400).json({ message: 'Validation failed', errors: details });
+    }
     res.status(500).json({ message: 'Error creating staff record', error: error.message });
   }
 };
@@ -43,12 +47,20 @@ export const createStaff = async (req, res) => {
 // Update a staff member by ID
 export const updateStaff = async (req, res) => {
   try {
-    const updatedStaff = await Staff.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const updatedStaff = await Staff.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true, runValidators: true, context: 'query' }
+    );
     if (!updatedStaff) {
       return res.status(404).json({ message: 'Staff member not found' });
     }
     res.status(200).json(updatedStaff);
   } catch (error) {
+    if (error.name === 'ValidationError') {
+      const details = Object.values(error.errors).map(e => e.message);
+      return res.status(400).json({ message: 'Validation failed', errors: details });
+    }
     res.status(500).json({ message: 'Error updating staff record', error });
   }
 };

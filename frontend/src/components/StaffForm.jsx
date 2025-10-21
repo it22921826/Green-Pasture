@@ -22,13 +22,14 @@ const StaffForm = ({ onSubmit, onCancel, initialData = {} }) => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    if (name === 'name') {
-      // Allow only letters and spaces
-      if (/^[A-Za-z ]*$/.test(value)) {
+    const letterSpaceRegex = /^[A-Za-z ]*$/; // allow empty during typing
+
+    if (name === 'name' || name === 'role' || name === 'department') {
+      if (letterSpaceRegex.test(value)) {
         setFormData((prev) => ({ ...prev, [name]: value }));
-        setErrors((prev) => ({ ...prev, name: '' }));
+        setErrors((prev) => ({ ...prev, [name]: '' }));
       } else {
-        setErrors((prev) => ({ ...prev, name: 'Letters and spaces only' }));
+        setErrors((prev) => ({ ...prev, [name]: 'Letters and spaces only' }));
       }
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
@@ -37,8 +38,19 @@ const StaffForm = ({ onSubmit, onCancel, initialData = {} }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    const nextErrors = { ...errors };
     if (!formData.name.trim() || errors.name) {
-      setErrors((prev) => ({ ...prev, name: prev.name || 'Name is required' }));
+      nextErrors.name = nextErrors.name || 'Name is required';
+    }
+    if (!formData.role.trim() || errors.role) {
+      nextErrors.role = nextErrors.role || 'Role is required';
+    }
+    if (!formData.department.trim() || errors.department) {
+      nextErrors.department = nextErrors.department || 'Department is required';
+    }
+
+    if (nextErrors.name || nextErrors.role || nextErrors.department) {
+      setErrors(nextErrors);
       return;
     }
     onSubmit(formData);
@@ -79,9 +91,12 @@ const StaffForm = ({ onSubmit, onCancel, initialData = {} }) => {
           value={formData.role}
           onChange={handleChange}
           required
-          style={inputStyle}
+          style={{ ...inputStyle, borderColor: errors.role ? '#dc2626' : '#ccc' }}
           placeholder="e.g. Manager, Receptionist"
         />
+        {errors.role && (
+          <span style={{ color: '#dc2626', fontSize: '12px', marginTop: '4px' }}>{errors.role}</span>
+        )}
       </div>
 
       <div style={formGroup}>
@@ -92,9 +107,12 @@ const StaffForm = ({ onSubmit, onCancel, initialData = {} }) => {
           value={formData.department}
           onChange={handleChange}
           required
-          style={inputStyle}
+          style={{ ...inputStyle, borderColor: errors.department ? '#dc2626' : '#ccc' }}
           placeholder="e.g. Front Office, Housekeeping"
         />
+        {errors.department && (
+          <span style={{ color: '#dc2626', fontSize: '12px', marginTop: '4px' }}>{errors.department}</span>
+        )}
       </div>
 
       <div style={formGroup}>

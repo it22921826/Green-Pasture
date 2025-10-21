@@ -46,7 +46,7 @@ const Footer = () => {
         <div className="max-w-80">
           <img src={logo} alt="logo" className="mb-4 h-9 w-9 rounded-full object-cover bg-white p-0.5 shadow-sm" />
           <p className="text-sm text-gray-400">
-            Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text.
+           A serene retreat nestled in a lush, natural setting. Escape the everyday in a tranquil haven offering comfortable rooms, refreshing green views, and a peaceful atmosphere perfect for relaxation and rejuvenation.
           </p>
           <div className="flex items-center gap-3 mt-4 text-gray-400">
             <a href="#" aria-label="Instagram" className="hover:text-white transition-colors">

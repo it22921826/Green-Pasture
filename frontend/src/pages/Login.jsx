@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import Hotel from "../assets/Hotel.jpg";
 import { useNavigate, Link } from "react-router-dom";
-import { login } from "../api/userApi"; // Ensure API is defined
+import { login, resendOtp as apiResendOtp, verifyOtp as apiVerifyOtp } from "../api/userApi"; // Ensure API is defined
 import { decodeToken, hasRole } from "../utils/authHelper";
 import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 
@@ -9,8 +9,11 @@ const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [unverified, setUnverified] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [otp, setOtp] = useState("");
+  const [verifying, setVerifying] = useState(false);
 
   const navigate = useNavigate();
 
@@ -20,7 +23,7 @@ const Login = () => {
     setError("");
 
     try {
-      const { data } = await login({ email, password });
+  const { data } = await login({ email, password });
 
       if (!data || !data.token) {
         throw new Error("Invalid response from server. Token missing.");
@@ -37,13 +40,42 @@ const Login = () => {
       }
     } catch (err) {
       console.error("Login error:", err);
-      if (err.response && err.response.data) {
-        setError(err.response.data.message || "Login failed");
-      } else {
-        setError(err.message || "Something went wrong");
-      }
+      const msg = err?.response?.data?.message || err?.message || "Login failed";
+      setError(msg);
+      if (msg.toLowerCase().includes('verify')) setUnverified(true);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    if (!email) {
+      setError("Please enter your email first.");
+      return;
+    }
+    if (!otp || otp.trim().length < 4) {
+      setError("Please enter the OTP sent to your email.");
+      return;
+    }
+    setError("");
+    setVerifying(true);
+    try {
+      await apiVerifyOtp(email.trim(), otp.trim());
+      // On successful verification, automatically attempt login again
+      const { data } = await login({ email, password });
+      if (!data || !data.token) throw new Error("Invalid response from server. Token missing.");
+      localStorage.setItem("token", data.token);
+      const user = decodeToken(data.token);
+      if (user && (hasRole(user, 'Admin') || hasRole(user, 'Staff'))) {
+        navigate("/dashboard");
+      } else {
+        navigate("/profile");
+      }
+    } catch (err) {
+      const msg = err?.response?.data?.message || err?.message || "Verification failed";
+      setError(msg);
+    } finally {
+      setVerifying(false);
     }
   };
 
@@ -67,6 +99,48 @@ const Login = () => {
         {error && (
           <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
             {error}
+          </div>
+        )}
+        {unverified && (
+          <div className="mb-4 text-sm text-neutral-700">
+            {/* Inline OTP verification UI */}
+            <div className="mb-3 text-left">
+              <label htmlFor="otp" className="mb-1 block font-medium">Enter OTP</label>
+              <input
+                id="otp"
+                type="text"
+                inputMode="numeric"
+                placeholder="6-digit code"
+                value={otp}
+                onChange={(e)=> setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-[15px] outline-none transition focus:border-blue-500"
+              />
+            </div>
+            <div className="flex items-center justify-between gap-2">
+              <button
+                type="button"
+                onClick={handleVerifyOtp}
+                disabled={verifying}
+                className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-gray-500"
+              >
+                {verifying ? 'Verifying…' : 'Verify OTP'}
+              </button>
+              <button
+                type="button"
+                className="text-blue-700 hover:underline"
+                onClick={async()=>{
+                  try {
+                    if (!email) { setError('Please enter your email first.'); return; }
+                    await apiResendOtp(email);
+                    alert('OTP resent');
+                  } catch(e){
+                    alert(e?.response?.data?.message || 'Failed to resend');
+                  }
+                }}
+              >
+                Resend OTP
+              </button>
+            </div>
           </div>
         )}
 

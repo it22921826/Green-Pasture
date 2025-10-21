@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { register } from '../api/userApi';
+import { register, verifyOtp as apiVerifyOtp, resendOtp as apiResendOtp } from '../api/userApi';
 import Hotel from '../assets/Hotel.jpg';
 import { User, Mail, Lock, Phone, MapPin, ListChecks, Eye, EyeOff } from 'lucide-react';
 
@@ -18,6 +18,9 @@ const Register = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({ name: '', phone: '' });
+  const [step, setStep] = useState('form'); // form | otp
+  const [otp, setOtp] = useState('');
+  const [pendingEmail, setPendingEmail] = useState('');
 
   const navigate = useNavigate();
 
@@ -60,8 +63,9 @@ const Register = () => {
     setLoading(true);
     setError('');
     try {
-      await register(form);
-      navigate('/login');
+  const r = await register(form);
+  setPendingEmail(form.email);
+  setStep('otp');
     } catch (err) {
       console.error('Register error:', err);
       if (err.response && err.response.data) {
@@ -71,6 +75,27 @@ const Register = () => {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const submitOtp = async (e) => {
+    e.preventDefault();
+    try {
+      const resp = await apiVerifyOtp(pendingEmail, otp);
+      if (resp?.data) {
+        navigate('/login');
+      }
+    } catch (err) {
+      setError(err?.response?.data?.message || err?.message || 'Verification failed');
+    }
+  };
+
+  const resend = async () => {
+    try {
+      await apiResendOtp(pendingEmail);
+      alert('OTP resent');
+    } catch (err) {
+      alert(err?.response?.data?.message || err?.message || 'Failed to resend OTP');
     }
   };
 
@@ -101,7 +126,8 @@ const Register = () => {
           <div className="mx-auto mb-4 h-7 w-7 animate-spin rounded-full border-2 border-gray-200 border-t-blue-600" />
         )}
 
-        <form onSubmit={handleSubmit}>
+  {step === 'form' ? (
+  <form onSubmit={handleSubmit}>
           {/* Name */}
           <div className="mb-4">
             <label htmlFor="name" className="mb-1 block font-medium">Full Name</label>
@@ -256,12 +282,27 @@ const Register = () => {
             {loading ? 'Registering...' : 'Register'}
           </button>
         </form>
+        ) : (
+          <form onSubmit={submitOtp}>
+            <div className="mb-4 text-center text-sm text-neutral-700">We sent a 6-digit code to {pendingEmail}. Enter it below to verify your account.</div>
+            <input value={otp} onChange={(e)=>setOtp(e.target.value.replace(/\D/g,''))} maxLength={6} inputMode="numeric" placeholder="Enter OTP" className="mb-3 w-full rounded-md border px-3 py-2 text-[15px] outline-none focus:border-blue-500" />
+            <div className="flex items-center justify-between">
+              <button type="button" onClick={resend} className="text-sm text-blue-700 hover:underline">Resend OTP</button>
+              <div className="flex gap-2">
+                <button type="button" onClick={()=>setStep('form')} className="rounded bg-neutral-200 px-4 py-2 hover:bg-neutral-300">Back</button>
+                <button type="submit" className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">Verify</button>
+              </div>
+            </div>
+          </form>
+        )}
 
         {/* Login link */}
-        <p className="mt-5 text-center text-sm text-neutral-100">
-          Already have an account?{' '}
-          <Link to="/login" className="font-medium text-blue-100 underline-offset-2 hover:underline">Login here</Link>
-        </p>
+        {step==='form' && (
+          <p className="mt-5 text-center text-sm text-neutral-100">
+            Already have an account?{' '}
+            <Link to="/login" className="font-medium text-blue-100 underline-offset-2 hover:underline">Login here</Link>
+          </p>
+        )}
       </div>
     </div>
   );

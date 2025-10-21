@@ -22,3 +22,5 @@ export const deleteGuest = async (guestId, token) => {
   }
 };
 export const changePassword = (data, token) => axios.put(`${API_URL}/change-password`, data, { headers: { Authorization: `Bearer ${token}` } });
+export const verifyOtp = (email, otp) => axios.post(`${API_URL}/verify-otp`, { email, otp });
+export const resendOtp = (email) => axios.post(`${API_URL}/resend-otp`, { email });

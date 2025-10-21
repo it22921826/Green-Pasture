@@ -11,6 +11,9 @@ const userSchema = new mongoose.Schema({
   bookingHistory: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Booking' }],
   preferences: { type: String },
   documents: [{ type: String }], // URLs or file paths
+  isVerified: { type: Boolean, default: false },
+  otpHash: { type: String, default: null },
+  otpExpires: { type: Date, default: null },
 }, { timestamps: true });
 
 userSchema.pre('save', async function (next) {

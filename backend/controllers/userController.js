@@ -1,5 +1,9 @@
 import User from '../models/User.js';
 import generateToken from '../utils/generateToken.js';
+import crypto from 'crypto';
+import { sendEmail } from '../utils/nodemailer.js';
+
+const hashOtp = (otp) => crypto.createHash('sha256').update(String(otp)).digest('hex');
 
 // Register User/Staff/Guest
 export const register = async (req, res) => {
@@ -12,20 +16,62 @@ export const register = async (req, res) => {
       return res.status(400).json({ message: 'User already exists' });
     }
 
-    // Create user
+    // Create user (unverified)
     const user = await User.create({
       name,
-      email,
+      email: String(email).toLowerCase(),
       password,
       phone,
       address,
       role,
       preferences,
       documents,
+      isVerified: false,
     });
 
+    // Generate and email OTP
+    const otp = Math.floor(100000 + Math.random() * 900000);
+    user.otpHash = hashOtp(otp);
+    user.otpExpires = new Date(Date.now() + 10 * 60 * 1000);
+    await user.save();
+    try {
+      await sendEmail({
+        to: user.email,
+        subject: 'Verify your Green Pasture account',
+        text: `Your verification code is ${otp} (valid for 10 minutes).`,
+        html: `<p>Your verification code is:</p><h2>${otp}</h2><p>Valid for 10 minutes.</p>`
+      });
+    } catch (mailErr) {
+      console.error('[register] OTP email failed:', mailErr?.message || mailErr);
+    }
+
+    res.status(201).json({ message: 'Registered. Please check your email for the OTP to verify your account.' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Login
+export const login = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    const user = await User.findOne({ email: String(email).toLowerCase() });
+    if (!user) {
+      return res.status(401).json({ message: 'Invalid email or password' });
+    }
+
+    // Check password
+    const isPasswordValid = await user.matchPassword(password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ message: 'Invalid email or password' });
+    }
+
+    if (!user.isVerified) {
+      return res.status(403).json({ message: 'Please verify your email using the OTP sent to you.' });
+    }
     // Return user info with token
-    res.status(201).json({
+    res.status(200).json({
       _id: user._id,
       name: user.name,
       email: user.email,
@@ -37,32 +83,44 @@ export const register = async (req, res) => {
   }
 };
 
-// Login
-export const login = async (req, res) => {
+export const verifyOtp = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, otp } = req.body;
+    const user = await User.findOne({ email: String(email).toLowerCase() });
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (user.isVerified) return res.json({ message: 'Already verified' });
+    if (!user.otpHash || !user.otpExpires) return res.status(400).json({ message: 'No OTP to verify' });
+    if (user.otpExpires < new Date()) return res.status(400).json({ message: 'OTP expired' });
+    if (user.otpHash !== hashOtp(otp)) return res.status(400).json({ message: 'Invalid OTP' });
+    user.isVerified = true;
+    user.otpHash = null;
+    user.otpExpires = null;
+    await user.save();
+    return res.json({ message: 'Email verified successfully' });
+  } catch (err) {
+    return res.status(500).json({ message: 'Verification failed' });
+  }
+};
 
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(401).json({ message: 'Invalid email or password' });
-    }
-
-    // Check password
-    const isPasswordValid = await user.matchPassword(password);
-    if (!isPasswordValid) {
-      return res.status(401).json({ message: 'Invalid email or password' });
-    }
-
-    // Return user info with token
-    res.status(200).json({
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      token: generateToken(user._id, user.role),
+export const resendOtp = async (req, res) => {
+  try {
+    const { email } = req.body;
+    const user = await User.findOne({ email: String(email).toLowerCase() });
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (user.isVerified) return res.status(400).json({ message: 'Account already verified' });
+    const otp = Math.floor(100000 + Math.random() * 900000);
+    user.otpHash = hashOtp(otp);
+    user.otpExpires = new Date(Date.now() + 10 * 60 * 1000);
+    await user.save();
+    await sendEmail({
+      to: user.email,
+      subject: 'Your new OTP code',
+      text: `OTP: ${otp} (valid for 10 minutes)`,
+      html: `<p>OTP:</p><h2>${otp}</h2><p>Valid for 10 minutes.</p>`
     });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+    return res.json({ message: 'OTP sent' });
+  } catch (err) {
+    return res.status(500).json({ message: 'Resend failed' });
   }
 };
 

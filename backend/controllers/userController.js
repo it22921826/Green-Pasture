@@ -29,7 +29,7 @@ export const register = async (req, res) => {
       isVerified: false,
     });
 
-    // Generate and email OTP
+    // Generate and email OTP for new user
     const otp = Math.floor(100000 + Math.random() * 900000);
     user.otpHash = hashOtp(otp);
     user.otpExpires = new Date(Date.now() + 10 * 60 * 1000);
